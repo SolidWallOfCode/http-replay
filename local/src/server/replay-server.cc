@@ -185,7 +185,15 @@ void TF_Serve(std::thread *t) {
                                           w.view().substr(body_offset));
             }
             Info("Responding to request - status {}.", txn._rsp._status);
-            errata = txn._rsp.transmit(*(info._stream));
+
+            if (txn._req._method == "head") {
+              Info("Got head request, not transmitting body.");
+              errata = txn._rsp.transmit(*(info._stream), false);
+            } else {
+              errata = txn._rsp.transmit(*(info._stream));
+            }
+
+            
           } else {
             errata.error(R"(Proxy request with key "{}" not found.)", key);
           }

@@ -417,7 +417,7 @@ swoc::Errata HttpHeader::transmit_body(Stream &stream) const {
   return errata;
 }
 
-swoc::Errata HttpHeader::transmit(Stream &stream) const {
+swoc::Errata HttpHeader::transmit(Stream &stream, bool send_body) const {
   swoc::Errata errata;
   if (stream.is_closed()) {
     errata.error(R"(Transmit stream is closed)");
@@ -433,7 +433,8 @@ swoc::Errata HttpHeader::transmit(Stream &stream) const {
     w.write(HTTP_EOL);
     ssize_t n = stream.write(w.view());
     if (n == w.size()) {
-      errata = this->transmit_body(stream);
+      if (send_body)
+        errata = this->transmit_body(stream);
     } else {
       errata.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
                    w.size(), swoc::bwf::Errno{});

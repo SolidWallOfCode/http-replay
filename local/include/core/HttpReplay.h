@@ -239,7 +239,7 @@ public:
    *
    * @param fd Ouput stream.
    */
-  swoc::Errata transmit(Stream &stream) const;
+  swoc::Errata transmit(Stream &stream, bool send_body=true) const;
 
   /** Write the body to @a fd.
    *

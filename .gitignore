@@ -35,3 +35,6 @@
 \.parts\.cache
 \_*
 \.sconsign\.dblite
+
+# IDE
+.vscode/*
