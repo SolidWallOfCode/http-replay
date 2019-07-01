@@ -62,6 +62,9 @@ static const std::string YAML_HTTP_METHOD_KEY{"method"};
 static const std::string YAML_HTTP_URL_KEY{"url"};
 static const std::string YAML_CONTENT_KEY{"content"};
 static const std::string YAML_CONTENT_LENGTH_KEY{"size"};
+static const std::string YAML_CONTENT_DATA_KEY{"data"};
+static const std::string YAML_CONTENT_ENCODING_KEY{"encoding"};
+static const std::string YAML_CONTENT_TRANSFER_KEY{"transfer"};
 
 static constexpr size_t MAX_HDR_SIZE = 131072; // Max our ATS is configured for
 static constexpr size_t MAX_DRAIN_BUFFER_SIZE = 1 << 20;
@@ -279,7 +282,10 @@ public:
 
   unsigned _status = 0;
   TextView _reason;
-  unsigned _content_size = 0;
+  /// If @a content_size is valid but not @a content_data, synthesize the content.
+  /// This is split instead of @c TextView because these get set independently during load.
+  char const* _content_data; ///< Literal data for the content.
+  size_t _content_size = 0; ///< Length of the content.
   TextView _method;
   TextView _http_version;
   std::string _url;
@@ -299,6 +305,9 @@ public:
   static void set_max_content_length(size_t n);
 
   static void global_init();
+
+  /// Precomputed content buffer.
+  static swoc::MemSpan<char> _content;
 
 protected:
   class Binding : public swoc::bwf::NameBinding {
@@ -334,10 +343,27 @@ protected:
    */
   static TextView localize(TextView text);
 
+  /// Encoding for input text.
+  enum class Encoding {
+    TEXT, ///< Plain text, no encoding.
+    URI //< URI encoded.
+  };
+
+  /** Convert @a name to a localized view.
+   *
+   * @param name Text to localize.
+   * @param enc Type of decoding to perform before localization.
+   * @return The localized view, or @a name if localization is frozen and @a
+   * name is not found.
+   *
+   * @a name will be localized if string localization is not frozen, or @a name
+   * is already localized. @a enc specifies the text is encoded and needs to be
+   * decoded before localization.
+   */
+  static TextView localize(TextView text, Encoding enc);
+
   static NameSet _names;
   static swoc::MemArena _arena;
-  /// Precomputed content buffer.
-  static swoc::MemSpan<char> _content;
 };
 
 // YAML support utilities.
