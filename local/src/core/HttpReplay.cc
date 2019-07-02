@@ -362,7 +362,7 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
   _content_length_p = false;
   // Some methods ignore the Content-Length for the current transaction
   if (strcasecmp(method, "HEAD") == 0) {
-    // Don't try chuned encoding later
+    // Don't try chunked encoding later
     _content_size = 0;
     _content_length_p = true;
   } else {
@@ -706,10 +706,13 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
       if (auto data_node { content_node[YAML_CONTENT_DATA_KEY] } ; data_node) {
         Encoding enc { Encoding::TEXT };
         if (auto enc_node { content_node[YAML_CONTENT_ENCODING_KEY] } ; enc_node) {
-          if (0 == strcasecmp("uri"_tv, enc_node.Scalar())) {
+          TextView text { enc_node.Scalar() };
+          if (0 == strcasecmp("uri"_tv, text)) {
             enc = Encoding::URI;
+          } else if (0 == strcasecmp("plain"_tv, text)) {
+            enc = Encoding::TEXT;
           } else {
-            errata.error(R"(Unknown encoding "{}" at {}.)", enc_node.Scalar(), enc_node.Mark());
+            errata.error(R"(Unknown encoding "{}" at {}.)", text, enc_node.Mark());
           }
         }
         TextView content { this->localize(data_node.Scalar(), enc) };
