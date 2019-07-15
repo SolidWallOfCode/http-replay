@@ -1,0 +1,77 @@
+Import('*')
+PartVersion(GitVersionFromTag("5.1.0.dev"))
+PartName("jemalloc")
+
+# need git directory for version info
+files = Pattern(src_dir="${CHECK_OUT_DIR}")
+# we copy everything over for autoconf to avoid messing with the source
+# when we autoreconf
+copyed = env.CCopy(
+    source=files,
+    target="$BUILD_DIR"
+)
+
+# version should be computed from the output of git describe in the source tree
+env.Command(
+    ["Makefile"],
+    copyed,
+    "cd ${TARGET.dir} && ./autogen.sh && ./configure\
+     --prefix=${ABSPATH('#_makeinstall')}/${PART_NAME}\
+     --enable-prof\
+     --enable-stats\
+     --enable-fill\
+     CC=${CC} CXX=${CXX}\
+     ",
+    source_scanner=Scanner(function=lambda *lst, **kw: [])
+)
+
+env.Command(
+    [
+        "#_makeinstall/${PART_NAME}/bin/jemalloc-config",
+        "#_makeinstall/${PART_NAME}/bin/jemalloc.sh",
+        "#_makeinstall/${PART_NAME}/bin/jeprof",
+        "#_makeinstall/${PART_NAME}/lib/pkgconfig/jemalloc.pc",
+        "#_makeinstall/${PART_NAME}/lib/libjemalloc_pic.a",
+        "#_makeinstall/${PART_NAME}/lib/libjemalloc.a",
+        env.FileSymbolicLink("#_makeinstall/${PART_NAME}/lib/libjemalloc.so"),
+        "#_makeinstall/${PART_NAME}/lib/libjemalloc.so.2",
+        "#_makeinstall/${PART_NAME}/include/jemalloc/jemalloc.h",
+        "#_makeinstall/${PART_NAME}/share/doc/jemalloc/jemalloc.html",
+        "#_makeinstall/${PART_NAME}/share/man/man3/jemalloc.3",
+    ],
+    ["Makefile"],
+    [
+        'cd ${SOURCE.dir} ; make dist V=1',
+        'cd ${{SOURCE.dir}} ; make all V=1\
+         $(-j{jobs}$)'.format(jobs=env.GetOption('num_jobs')),
+        'cd ${SOURCE.dir} ; make install'
+    ]
+)
+
+env.InstallBin(
+    env.SetRPath(
+        env.Glob("#_makeinstall/${PART_NAME}/bin/*")
+    )
+)
+env.InstallLib(env.Glob("#_makeinstall/${PART_NAME}/lib/*.a"), auto_add_libs=False)
+env.InstallLib(
+    env.SetRPath(
+        env.Glob("#_makeinstall/${PART_NAME}/lib/*.so*")
+    )
+)
+env.InstallInclude(
+    env.Glob("#_makeinstall/${PART_NAME}/include/jemalloc/*"),
+    sub_dir="jemalloc",
+    add_to_path=False
+)
+substdict = {env.subst("${ABSPATH('#_makeinstall/$PART_NAME')}"):env.subst("${PACKAGE_ROOT}")}
+pc_files = [
+    env.Substfile(target="${SOURCE.file}", source=f, SUBST_DICT=substdict) for f in env.Glob("#_makeinstall/${PART_NAME}/lib/pkgconfig/*.pc")
+    ]
+env.InstallLib(pc_files, auto_add_libs=False, sub_dir="pkgconfig", add_to_path=False)
+
+# env.ExportCPPPATH(env.Dir("#_makeinstall/${PART_NAME}/include"))
+# env.ExportLIBPATH(env.Dir("#_makeinstall/${PART_NAME}/lib"))
+# env.ExportLIBS(["libcrypto.so","libssl.so"])
+env.ExportItem("PKGCONFIG", env.Dir("#_makeinstall/${PART_NAME}/lib/pkgconfig").abspath)
+env.ExportItem("SDK", env.Dir("#_makeinstall/${PART_NAME}").abspath)
