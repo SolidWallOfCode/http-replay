@@ -54,48 +54,70 @@
         }
       }
     },
+    "client-txn": {
+      "description": "Client side headers for a transaction.",
+      "type": "object",
+      "required": [ "client-request", "proxy-response" ]
+    },
+    "upstream-txn": {
+      "description": "Upstream side headers for a transaction.",
+      "type": "object",
+      "required": [ "proxy-request", "server-response" ]
+    },
     "transaction": {
       "description": "transaction data",
       "type": "object",
-      "required": [
-        "client-request",
-        "server-response"
-      ],
-      "properties": {
-        "uuid": {
-          "description": "UUID to identify this specific transaction.",
-          "type": "string"
+      "allOf": [
+        {
+          "properties": {
+            "uuid": {
+              "description": "UUID to identify this specific transaction.",
+              "type": "string"
+            },
+            "start-time": {
+              "description": "Start time in epoch format",
+              "type": "number"
+            },
+            "client-request": {
+              "description": "Request sent by the inbound (downstream) connection.",
+              "$ref": "#/definitions/request"
+            },
+            "proxy-response": {
+              "description": "Response sent by the proxy.",
+              "$ref": "#/definitions/response"
+            },
+            "proxy-request": {
+              "description": "Request sent by the proxy.",
+              "$ref": "#/definitions/request"
+            },
+            "server-response": {
+              "description": "Response from the outbound (upstream) connection.",
+              "$ref": "#/definitions/response"
+            }
+          },
+          "additionalProperties": false
         },
-        "start-time": {
-          "description": "Start time in epoch format",
-          "type": "number"
-        },
-        "client-request": {
-          "description": "Request sent by the inbound (downstream) connection.",
-          "$ref": "#/definitions/request"
-        },
-        "proxy-request": {
-          "description": "Request sent by the proxy.",
-          "$ref": "#/definitions/request"
-        },
-        "server-response": {
-          "description": "Response from the outbound (upstream) connection.",
-          "$ref": "#/definitions/response"
-        },
-        "proxy-response": {
-          "description": "Response sent by the proxy.",
-          "$ref": "#/definitions/response"
+        {
+          "anyOf": [
+            { "$ref": "#/definitions/client-txn" },
+            { "$ref": "#/definitions/upstream-txn" }
+          ]
         }
-      }
+      ]
     },
     "encoding": {
-      "description": "Text encoding format.",
+      "description": "Text encoding format for data in the replay file.",
       "type": "string",
       "enum": [
         "plain",
         "uri",
         "esc_json"
       ]
+    },
+    "transfer": {
+      "description": "Transfer encoding to use for content. This is what is used on the wire and overrides the Transfer-Encoding field value.",
+      "type": "string",
+      "enum": [ "plain", "chunked" ]
     },
     "content": {
       "description": "HTTP payload.",
@@ -111,8 +133,12 @@
               "description": "Content data encoding for JSON compatibility.",
               "$ref": "#/definitions/encoding"
             },
+            "transfer": {
+              "description": "Transfer encoding for the content.",
+              "$ref": "#/definitions/transfer"
+            },
             "size": {
-              "description": "Size of the payload in bytes. This must match the actual size of the 'data' field.",
+              "description": "Size of the content in bytes. This must not be larger than the explicit content.",
               "type": "number"
             },
             "data": {
@@ -151,8 +177,7 @@
           "description": "Encoding applied to field values.",
           "$ref": "#/definitions/encoding"
         },
-        "fields": {
-          "description": "The field name and value pairs.",
+        "fields": {          "description": "The field name and value pairs.",
           "type": "array",
           "items": {
             "description": "HTTP field.",
