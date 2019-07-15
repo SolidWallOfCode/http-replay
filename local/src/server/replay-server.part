@@ -6,6 +6,7 @@ env.DependsOn([
     Component("openssl"),
     Component("yaml-cpp"),
     Component("http-replay.core"),
+    Component("nghttp2"),
 ])
 
 env.AppendUnique(
