@@ -42,3 +42,5 @@
 \.parts\.cache
 \_*
 \.sconsign\.dblite
+
+dist/
