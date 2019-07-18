@@ -1,0 +1,41 @@
+Import('*')
+PartName("rpm")
+
+DependsOn([
+    "$PART_ROOT_NAME"
+])
+
+rpm_vars = [
+    "%define debug_package %{nil}",
+    # prevent stripping
+    "%define __strip /bin/true",
+    "%define short_version {0}".format(env.subst("$PART_SHORT_VERSION")),
+]
+
+description = '''HTTP replay
+
+'''
+
+url = "https://git.ouroath.com/Edge/http-replay"
+
+
+out = env.RPMPackage(
+    '${NAME}-${VERSION}-${RELEASE}${DIST}.${TARGET_ARCH}.rpm',
+    sources=["http-replay"],
+    TARGET_ARCH='x86_64',
+    NAME='${OATH_RPM_NAME}',
+    VERSION='${PART_VERSION}',
+    RELEASE=1,#env.RpmRelease("${OATH_RPM_NAME}", "${PART_VERSION}"),
+    summary="Oath base build of ${PART_ROOT_NAME}",
+    description=description,
+    url=url,
+    autoreq="no",
+    license='MIT',
+    group="Development/Tools",
+    requires=[
+        
+    ],
+    RPM_VARS=rpm_vars,
+)
+
+env.Alias("dist", env.CCopy("#dist", out))
