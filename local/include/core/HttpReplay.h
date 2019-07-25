@@ -284,7 +284,7 @@ public:
   TextView _reason;
   /// If @a content_size is valid but not @a content_data, synthesize the content.
   /// This is split instead of @c TextView because these get set independently during load.
-  char const* _content_data; ///< Literal data for the content.
+  char const* _content_data = nullptr; ///< Literal data for the content.
   size_t _content_size = 0; ///< Length of the content.
   TextView _method;
   TextView _http_version;
