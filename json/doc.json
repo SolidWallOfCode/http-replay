@@ -1,0 +1,115 @@
+{
+    "meta": {
+        "version": "1.0",
+        "global_field_rules": {
+            "encoding": "esc_json",
+            "fields": [
+                [
+                    "Host",
+                    "example.to_override",
+                    "equals"
+                ],
+                [
+                    "Fieldthatshouldneverexist",
+                    null,
+                    "absence"
+                ],
+                [
+                    "uuid",
+                    null,
+                    "presence"
+                ]
+            ]
+        }
+    },
+    "sessions": [
+        {
+            "protocols": [
+                "h2",
+                "tcp",
+                "ipv6"
+            ],
+            "transactions": [
+                {
+                    "uuid": "1",
+                    "client-request": {
+                        "version": "1.1",
+                        "scheme": "http",
+                        "method": "GET",
+                        "url": "http://example.one/",
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Host",
+                                    "example.one"
+                                ],
+                                [
+                                    "uuid",
+                                    "1"
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-request": {
+                        "version": "1.1",
+                        "scheme": "http",
+                        "method": "GET",
+                        "url": "http://example.one/",
+                        "headers": [
+                            [
+                                "Host",
+                                "example.one",
+                                "equals"
+                            ]
+                        ]
+                    },
+                    "server-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "size": 6128
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": {
+                                "encoding": "esc_json",
+                                "fields": [
+                                    [
+                                        "Host",
+                                        "example.one"
+                                    ],
+                                    [
+                                        "uuid",
+                                        "1"
+                                    ],
+                                    [
+                                        "Content-Length",
+                                        "6128"
+                                    ]
+                                ]
+                            }
+                        }
+                    },
+                    "proxy-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "size": 6128
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                "Host",
+                                "example.one",
+                                "equals"
+                                ]
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

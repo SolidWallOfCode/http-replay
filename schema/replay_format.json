@@ -11,6 +11,10 @@
         "version": {
           "description": "File format version.",
           "type": "string"
+        },
+        "global-field-rules": {
+          "description": "Header name, action, and data triples.",
+          "$ref": "#/definitions/header-fields"
         }
       }
     },
@@ -51,6 +55,10 @@
             "description": "Transaction of the Session",
             "$ref": "#/definitions/transaction"
           }
+        },
+        "session-field-rules": {
+          "description": "Header name, action, and data triples.",
+          "$ref": "#/definitions/header-fields"
         }
       }
     },
@@ -104,6 +112,80 @@
           ]
         }
       ]
+    },
+    "request": {
+      "title": "request",
+      "description": "HTTP request.",
+      "type": "object",
+      "required": [
+        "method",
+        "url"
+      ],
+      "properties": {
+        "version": {
+          "description": "HTTP version",
+          "type": "string",
+          "enum": [
+            "0.9",
+            "1.0",
+            "1.1"
+          ]
+        },
+        "scheme": {
+          "description": "HTTP scheme (request).",
+          "type": "string"
+        },
+        "method": {
+          "description": "HTTP method (request)",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL path, anchor, and parameters.",
+          "type": "string"
+        },
+        "content": {
+          "description": "Payload for this request",
+          "$ref": "#/definitions/content"
+        },
+        "headers": {
+          "description": "HTTP header fields or field rules (proxy).",
+          "$ref": "#/definitions/header-fields"
+        },
+        "options": {
+          "description": "map of directives for MicroServer",
+          "type": "object"
+        }
+      }
+    },
+    "response": {
+      "title": "response",
+      "description": "HTTP response.",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "description": "Status code.",
+          "type": "number"
+        },
+        "reason": {
+          "description": "Reason phrase.",
+          "type": "string"
+        },
+        "content": {
+          "description": "HTTP Payload",
+          "$ref": "#/definitions/content"
+        },
+        "headers": {
+          "description": "HTTP header fields or field rules (proxy).",
+          "$ref": "#/definitions/header-fields"
+        },
+        "options": {
+          "description": "map of directives for MicroServer",
+          "type": "object"
+        }
+      }
     },
     "encoding": {
       "description": "Text encoding format for data in the replay file.",
@@ -167,7 +249,7 @@
       ]
     },
     "header-fields": {
-      "description": "HTTP header fields.",
+      "description": "HTTP header fields and field rules. Currently only allowed in global/file scope, intended to be generalized to be allowed to appear in session, transaction, request, and header scopes later.",
       "type": "object",
       "required": [
         "fields"
@@ -177,7 +259,8 @@
           "description": "Encoding applied to field values.",
           "$ref": "#/definitions/encoding"
         },
-        "fields": {          "description": "The field name and value pairs.",
+        "fields": {
+          "description": "The field name and value pairs.",
           "type": "array",
           "items": {
             "description": "HTTP field.",
@@ -186,93 +269,24 @@
             "maxItems": 3,
             "items": [
               {
-                "description": "Name of the field.",
+                "description": "Name of the field (case insensitive).",
                 "type": "string"
               },
               {
-                "description": "Value of the field.",
+                "description": "Value of the field, for 'equal' (case insensitive).",
                 "type": "string"
               },
               {
-                "description": "Flag for the field. 'e' for existence, '==/!=' for comparison testing",
-                "type": "string"
+                "description": "Type of check being done on the field.",
+                "type": "string",
+                "enum": [
+                  "present",
+                  "absent",
+                  "equal"
+                ]
               }
             ]
           }
-        }
-      }
-    },
-    "request": {
-      "title": "request",
-      "description": "HTTP request.",
-      "type": "object",
-      "required": [
-        "method",
-        "url"
-      ],
-      "properties": {
-        "version": {
-          "description": "HTTP version",
-          "type": "string",
-          "enum": [
-            "0.9",
-            "1.0",
-            "1.1"
-          ]
-        },
-        "scheme": {
-          "description": "HTTP scheme (request).",
-          "type": "string"
-        },
-        "method": {
-          "description": "HTTP method (request)",
-          "type": "string"
-        },
-        "url": {
-          "description": "URL path, anchor, and parameters.",
-          "type": "string"
-        },
-        "content": {
-          "description": "Payload for this request",
-          "$ref": "#/definitions/content"
-        },
-        "headers": {
-          "description": "HTTP header fields.",
-          "$ref": "#/definitions/header-fields"
-        },
-        "options": {
-          "description": "map of directives for MicroServer",
-          "type": "object"
-        }
-      }
-    },
-    "response": {
-      "title": "response",
-      "description": "HTTP response.",
-      "type": "object",
-      "required": [
-        "status"
-      ],
-      "properties": {
-        "status": {
-          "description": "Status code.",
-          "type": "number"
-        },
-        "reason": {
-          "description": "Reason phrase.",
-          "type": "string"
-        },
-        "content": {
-          "description": "HTTP Payload",
-          "$ref": "#/definitions/content"
-        },
-        "headers": {
-          "description": "HTTP header fields.",
-          "$ref": "#/definitions/header-fields"
-        },
-        "options": {
-          "description": "map of directives for MicroServer",
-          "type": "object"
         }
       }
     }
