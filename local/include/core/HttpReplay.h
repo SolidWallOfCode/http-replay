@@ -349,7 +349,7 @@ public:
 };
 
 struct VerificationConfig {
-  std::unique_ptr<HeaderRules> txn_rules;
+  HeaderRules* txn_rules;
 };
 
 class HttpHeader {

@@ -821,6 +821,7 @@ swoc::Errata HttpHeader::load(YAML::Node const &node, ParseOption parse_mode) {
       auto field_list_node{hdr_node[YAML_FIELDS_KEY]};
       // Possible issue with copying?
       swoc::Errata result;
+      // Use != to simplify logic with PARSE_BOTH
       if (parse_mode != ParseOption::PARSE_FIELDS) {
         result.note(this->_rules.parse_rules(field_list_node));
       }
@@ -904,6 +905,7 @@ std::string HttpHeader::make_key() {
 
 bool HttpHeader::verify_headers(const HeaderRules &rules_) const {
   // Remains false if no issue is observed
+  // Setting true does not break loop because test() calls Info()
   bool issue_exists = false;
   for (auto rule_iter = rules_.rules.cbegin(); rule_iter != rules_.rules.cend(); ++rule_iter) {
     // Hashing uses strcasecmp internally
@@ -1095,7 +1097,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
           errata.info(R"(No meta node ("{}") at {} in "{}".)",
                       YAML_META_KEY, root.Mark(), path);
         }
-        handler.config = VerificationConfig{std::make_unique<HeaderRules>(global_rules)};
+        handler.config = VerificationConfig{&global_rules};
         if (root[YAML_SSN_KEY]) {
           auto ssn_list_node{root[YAML_SSN_KEY]};
           if (ssn_list_node.IsSequence()) {
