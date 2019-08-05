@@ -127,8 +127,8 @@ swoc::Errata ServerReplayFileHandler::txn_open(YAML::Node const &node) {
 }
 
 swoc::Errata ServerReplayFileHandler::proxy_request(YAML::Node const &node) {
-  _txn._req._rules = *config.txn_rules;
-  swoc::Errata errata = _txn._req.load(node, HttpHeader::ParseOption::PARSE_BOTH);
+  _txn._req._fields_rules = *config.txn_rules;
+  swoc::Errata errata = _txn._req.load(node);
   if (errata.is_ok()) {
     _key = _txn._req.make_key();
   }
@@ -136,10 +136,10 @@ swoc::Errata ServerReplayFileHandler::proxy_request(YAML::Node const &node) {
 }
 
 swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
-  auto errata{_txn._rsp.load(node, HttpHeader::ParseOption::PARSE_FIELDS)};
+  auto errata{_txn._rsp.load(node)};
   if (errata.is_ok()) {
-    if (auto spot{_txn._rsp._fields.find(HttpHeader::FIELD_CONTENT_LENGTH)};
-        spot != _txn._rsp._fields.end()) {
+    if (auto spot{_txn._rsp._fields_rules._fields.find(HttpHeader::FIELD_CONTENT_LENGTH)};
+        spot != _txn._rsp._fields_rules._fields.end()) {
       TextView src{spot->second}, parsed;
       auto cl = swoc::svtou(src, &parsed);
       if (parsed.size() == src.size()) {
@@ -202,7 +202,7 @@ void TF_Serve(std::thread *t) {
             }
             Info("Validating request.");
             Info("{}", req_hdr);
-            if (req_hdr.verify_headers(txn._req._rules)) {
+            if (req_hdr.verify_headers(txn._req._fields_rules)) {
               errata.error(R"(Request headers did not match expected request headers.)");
             }
             Info("Responding to request - status {}.", txn._rsp._status);

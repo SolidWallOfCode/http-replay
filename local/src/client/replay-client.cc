@@ -169,30 +169,30 @@ swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
 
 swoc::Errata ClientReplayFileHandler::client_request(YAML::Node const &node) {
   if (!Proxy_Mode) {
-    return _txn._req.load(node, HttpHeader::ParseOption::PARSE_FIELDS);
+    return _txn._req.load(node);
   }
   return {};
 }
 
 swoc::Errata ClientReplayFileHandler::proxy_request(YAML::Node const &node) {
   if (Proxy_Mode) {
-    return _txn._req.load(node, HttpHeader::ParseOption::PARSE_FIELDS);
+    return _txn._req.load(node);
   }
   return {};
 }
 
 swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
   if (!Proxy_Mode) {
-    _txn._rsp._rules = *config.txn_rules;
-    return _txn._rsp.load(node, HttpHeader::ParseOption::PARSE_RULES);
+    _txn._rsp._fields_rules = *config.txn_rules;
+    return _txn._rsp.load(node);
   }
   return {};
 }
 
 swoc::Errata ClientReplayFileHandler::server_response(YAML::Node const &node) {
   if (Proxy_Mode) {
-    _txn._rsp._rules = *config.txn_rules;
-    return _txn._rsp.load(node, HttpHeader::ParseOption::PARSE_RULES);
+    _txn._rsp._fields_rules = *config.txn_rules;
+    return _txn._rsp.load(node);
   }
   return {};
 }
@@ -255,7 +255,7 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
           do_error();
           return errata;
         }
-        if (rsp_hdr.verify_headers(txn._rsp._rules)) {
+        if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
           errata.error(R"(Response headers did not match expected response headers.)");
           return errata;
         }

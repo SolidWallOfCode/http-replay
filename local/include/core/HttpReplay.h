@@ -324,32 +324,34 @@ public:
   virtual bool test(swoc::TextView name, swoc::TextView value) const override;
 };
 
-class HeaderRules {
+class HttpFields {
   /// std::unordered_map that returns RuleChecks for given field names
-  using RuleMap = std::unordered_map<swoc::TextView, std::shared_ptr<RuleCheck>, Hash, Hash>;
-
-  RuleMap rules; ///< Maps field names to functors.
+  using Rules = std::unordered_map<swoc::TextView, std::shared_ptr<RuleCheck>, Hash, Hash>;
+  using Fields = std::unordered_map<swoc::TextView, std::string, Hash, Hash>;
 
 public:
+  Rules _rules; ///< Maps field names to functors.
+  Fields _fields; ///< Maps field names to values.
+  
   /** Parse a node holding as an attribute an individual field array of rules. Used instead of parse_rules on nodes like global_rules_node. Calls parse_rules.
    *
    * @param node YAML Node with Fields attribute holding array of rules
    * @return swoc::Errata holding any encountered errors
    */
-  swoc::Errata parse_rules_plain(YAML::Node const &node);
+  swoc::Errata parse_fields_node(YAML::Node const &node);
 
-  /** Parse an individual field array of rules.
+  /** Parse an individual array of fields and rules.
    *
-   * @param node Array of rules in YAML node format
+   * @param node Array of fields and rules in YAML node format
    * @return swoc::Errata holding any encountered errors
    */
-  swoc::Errata parse_rules(YAML::Node const &node);
+  swoc::Errata parse_fields_rules(YAML::Node const &node);
 
   friend class HttpHeader;
 };
 
 struct VerificationConfig {
-  HeaderRules* txn_rules;
+  HttpFields* txn_rules;
 };
 
 class HttpHeader {
@@ -359,7 +361,6 @@ class HttpHeader {
   //  using NameSet = std::unordered_set<TextView, std::hash<std::string_view>>;
 
   using NameSet = std::unordered_set<swoc::TextView, Hash, Hash>;
-  using Fields = std::unordered_map<swoc::TextView, std::string, Hash, Hash>;
 
 public:
   /// Parsing results.
@@ -367,13 +368,6 @@ public:
     PARSE_OK,        ///< Parse finished sucessfully.
     PARSE_ERROR,     ///< Invalid data.
     PARSE_INCOMPLETE ///< Parsing not complete.
-  };
-
-  /// Field/rule array parsing options.
-  enum ParseOption {
-    PARSE_RULES,   ///< Parse rules, for proxy response.
-    PARSE_FIELDS,  ///< Parse fields, for client request and server response.
-    PARSE_BOTH     ///< Parse both, for proxy request.
   };
 
   /// Important header fields.
@@ -438,8 +432,7 @@ public:
    */
   swoc::Errata drain_body(Stream &stream, TextView initial) const;
 
-  swoc::Errata load(YAML::Node const &node, ParseOption rule_mode);
-  swoc::Errata parse_fields(YAML::Node const &field_list_node);
+  swoc::Errata load(YAML::Node const &node);
 
   swoc::Rv<ParseResult> parse_request(TextView data);
   swoc::Rv<ParseResult> parse_response(TextView data);
@@ -454,7 +447,7 @@ public:
    * @param rules_ HeaderRules to iterate over, contains RuleCheck objects
    * @return Whether any rules were violated
    */
-  bool verify_headers(const HeaderRules &rules_) const;
+  bool verify_headers(const HttpFields &rules_) const;
 
   unsigned _status = 0;
   TextView _reason;
@@ -465,10 +458,9 @@ public:
   TextView _method;
   TextView _http_version;
   std::string _url;
-  Fields _fields;
 
-  /// Maps field names to functors
-  HeaderRules _rules;
+  /// Maps field names to functors (rules) and field names to values (fields)
+  HttpFields _fields_rules;
 
   /// Body is chunked.
   unsigned _chunked_p : 1;

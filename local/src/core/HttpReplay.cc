@@ -447,7 +447,7 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
     _content_size = 0;
     _content_length_p = true;
   } else {
-    if (auto spot{_fields.find(FIELD_CONTENT_LENGTH)}; spot != _fields.end()) {
+    if (auto spot{_fields_rules._fields.find(FIELD_CONTENT_LENGTH)}; spot != _fields_rules._fields.end()) {
       cl = swoc::svtou(spot->second);
       if (_content_size != 0 && cl != _content_size) {
         errata.info(R"(Conflicting sizes using "{}" value {} instead of {}.)",
@@ -462,7 +462,7 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
 
 swoc::Errata HttpHeader::update_transfer_encoding() {
   _chunked_p = false;
-  if (auto spot{_fields.find(FIELD_TRANSFER_ENCODING)}; spot != _fields.end()) {
+  if (auto spot{_fields_rules._fields.find(FIELD_TRANSFER_ENCODING)}; spot != _fields_rules._fields.end()) {
     if (0 == strcasecmp("chunked", spot->second)) {
       _chunked_p = true;
     }
@@ -516,7 +516,7 @@ swoc::Errata HttpHeader::transmit(Stream &stream) const {
   if (_status) {
     swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
     w.print("HTTP/{} {} {}{}", _http_version, _status, _reason, HTTP_EOL);
-    for (auto const &[name, value] : _fields) {
+    for (auto const &[name, value] : _fields_rules._fields) {
       w.write(name).write(": ").write(value).write(HTTP_EOL);
     }
     w.write(HTTP_EOL);
@@ -530,7 +530,7 @@ swoc::Errata HttpHeader::transmit(Stream &stream) const {
   } else if (_method) {
     swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
     w.print("{} {} HTTP/{}{}", _method, _url, _http_version, HTTP_EOL);
-    for (auto const &[name, value] : _fields) {
+    for (auto const &[name, value] : _fields_rules._fields) {
       w.write(name).write(": ").write(value).write(HTTP_EOL);
     }
     w.write(HTTP_EOL);
@@ -639,31 +639,6 @@ swoc::Errata HttpHeader::drain_body(Stream &stream,
   return errata;
 }
 
-swoc::Errata HttpHeader::parse_fields(YAML::Node const &field_list_node) {
-  swoc::Errata errata;
-
-  for (auto const &field_node : field_list_node) {
-    if (field_node.IsSequence()) {
-      if (field_node.size() == 2) {
-        TextView name{this->localize(field_node[0].Scalar())};
-        TextView value{field_node[1].Scalar()};
-        _fields[name] = value;
-      } else if (field_node.size() == 3) {
-        errata.info(R"(Node at {} is a rule.)",
-                    field_list_node.Mark());
-      } else {
-        errata.error(
-            "Field at {} is not a sequence of length 2 as required.",
-            field_node.Mark());
-      }
-    } else {
-      errata.error("Field at {} is not a sequence as required.",
-                   field_node.Mark());
-    }
-  }
-  return errata;
-}
-
 swoc::Rv<ssize_t> HttpHeader::read_header(Stream &reader,
                                           swoc::FixedBufferWriter &w) {
   swoc::Rv<ssize_t> zret{-1};
@@ -699,65 +674,65 @@ swoc::Rv<ssize_t> HttpHeader::read_header(Stream &reader,
   return std::move(zret);
 }
 
-swoc::Errata HeaderRules::parse_rules_plain(YAML::Node const &node) {
+swoc::Errata HttpFields::parse_fields_node(YAML::Node const &node) {
   swoc::Errata errata;
 
-  if (node[YAML_FIELDS_KEY]) {
-    auto rules_node{node[YAML_FIELDS_KEY]};
+  if (auto rules_node{node[YAML_FIELDS_KEY]} ; rules_node) {
     if (rules_node.IsSequence()) {
       if (rules_node.size() > 0) {
-        auto result{this->parse_rules(rules_node)};
+        auto result{this->parse_fields_rules(rules_node)};
         if (!result.is_ok()) {
-          errata.error("Failed to parse field rules at {}", node.Mark());
+          errata.error("Failed to parse fields and rules at {}", node.Mark());
           errata.note(result);
         }
       } else {
-        errata.info(R"(Field rules at {} is an empty list.)",
+        errata.info(R"(Fields and rules node at {} is an empty list.)",
                     rules_node.Mark());
       }
     } else {
-      errata.info(R"(Field rules at {} is not a sequence.)",
+      errata.info(R"(Fields and rules node at {} is not a sequence.)",
                   rules_node.Mark());
     }
   } else {
-    errata.info(R"(Node at {} is missing fields node.)",
+    errata.info(R"(Node at {} is missing a fields node.)",
                 node.Mark());
   }
   return errata;
 }
 
-swoc::Errata HeaderRules::parse_rules(YAML::Node const &node) {
+swoc::Errata HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node) {
   swoc::Errata errata;
 
-  for (auto const &rule_node : node) {
-    if (rule_node.IsSequence()) {
-      if (rule_node.size() == 3) {
-        TextView name{HttpHeader::localize(rule_node[0].Scalar())};
-        std::shared_ptr<RuleCheck> tester = RuleCheck::find(rule_node, name);
+  for (auto const &node : fields_rules_node) {
+    if (node.IsSequence()) {
+      if (node.size() == 3) {
+        TextView name{HttpHeader::localize(node[0].Scalar())};
+        std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
         if (!tester) {
           errata.error(
               "Field rule at {} does not have a valid flag ({})",
-              rule_node.Mark(), rule_node[2].Scalar());
+              node.Mark(), node[2].Scalar());
         } else {
-          rules[name] = tester;
+          _rules[name] = tester;
         }
-      } else if (rule_node.size() == 2) {
-        errata.info(R"(Node at {} is a field.)",
-                    node.Mark());
+      } else if (node.size() == 2) {
+        TextView name{HttpHeader::localize(node[0].Scalar())};
+        TextView value{node[1].Scalar()};
+        _fields[name] = value;
       } else {
         errata.error(
-            "Field rule at {} is not a sequence of length 3 as required.",
-            rule_node.Mark());
+            "Field or rule node at {} is not a sequence of length 2 or 3 as required.",
+            node.Mark());
       }
     } else {
-      errata.error("Field at {} is not a sequence as required.",
-                  rule_node.Mark());
+      errata.error("Field or rule at {} is not a sequence as required.",
+                  node.Mark());
     }
   }
   return errata;
 }
 
-swoc::Errata HttpHeader::load(YAML::Node const &node, ParseOption parse_mode) {
+swoc::Errata HttpHeader::load(YAML::Node const &node) {
   swoc::Errata errata;
 
   if (node[YAML_HTTP_VERSION_KEY]) {
@@ -819,15 +794,7 @@ swoc::Errata HttpHeader::load(YAML::Node const &node, ParseOption parse_mode) {
     auto hdr_node{node[YAML_HDR_KEY]};
     if (hdr_node[YAML_FIELDS_KEY]) {
       auto field_list_node{hdr_node[YAML_FIELDS_KEY]};
-      // Possible issue with copying?
-      swoc::Errata result;
-      // Use != to simplify logic with PARSE_BOTH
-      if (parse_mode != ParseOption::PARSE_FIELDS) {
-        result.note(this->_rules.parse_rules(field_list_node));
-      }
-      if (parse_mode != ParseOption::PARSE_RULES) {
-        result.note(this->parse_fields(field_list_node));
-      }
+      swoc::Errata result = _fields_rules.parse_fields_rules(field_list_node);
       if (result.is_ok()) {
         errata.note(this->update_content_length(_method));
         errata.note(this->update_transfer_encoding());
@@ -903,14 +870,14 @@ std::string HttpHeader::make_key() {
   return std::move(key);
 }
 
-bool HttpHeader::verify_headers(const HeaderRules &rules_) const {
+bool HttpHeader::verify_headers(const HttpFields &rules_) const {
   // Remains false if no issue is observed
   // Setting true does not break loop because test() calls Info()
   bool issue_exists = false;
-  for (auto rule_iter = rules_.rules.cbegin(); rule_iter != rules_.rules.cend(); ++rule_iter) {
+  for (auto rule_iter = rules_._rules.cbegin(); rule_iter != rules_._rules.cend(); ++rule_iter) {
     // Hashing uses strcasecmp internally
-    auto found_iter = _fields.find(rule_iter->first);
-    if (found_iter == _fields.cend()) {
+    auto found_iter = _fields_rules._fields.find(rule_iter->first);
+    if (found_iter == _fields_rules._fields.cend()) {
       if (!rule_iter->second->test(swoc::TextView(), swoc::TextView())) {
         issue_exists = true;
       }
@@ -982,7 +949,7 @@ HttpHeader::parse_request(swoc::TextView data) {
         auto name{this->localize(value.take_prefix_at(':'))};
         value.trim_if(&isspace);
         if (name) {
-          _fields[name] = value;
+          _fields_rules._fields[name] = value;
         } else {
           zret = PARSE_ERROR;
           zret.errata().error(R"(Malformed field "{}".)", field);
@@ -1022,7 +989,7 @@ HttpHeader::parse_response(swoc::TextView data) {
         auto name{value.take_prefix_at(':')};
         value.trim_if(&isspace);
         if (name) {
-          _fields[name] = value;
+          _fields_rules._fields[name] = value;
         } else {
           zret = PARSE_ERROR;
           zret.errata().error(R"(Malformed field "{}".)", field);
@@ -1042,7 +1009,7 @@ operator()(BufferWriter &w, const swoc::bwf::Spec &spec) const {
   TextView name{spec._name};
   if (name.starts_with_nocase(FIELD_PREFIX)) {
     name.remove_prefix(FIELD_PREFIX.size());
-    if (auto spot{_hdr._fields.find(name)}; spot != _hdr._fields.end()) {
+    if (auto spot{_hdr._fields_rules._fields.find(name)}; spot != _hdr._fields_rules._fields.end()) {
       bwformat(w, spec, spot->second);
     } else {
       bwformat(w, spec, "*N/A*");
@@ -1060,7 +1027,7 @@ namespace swoc {
   bwformat(BufferWriter& w,
                 bwf::Spec const& spec, HttpHeader const& h) {
     w.write("Printing Headers:\n"sv);
-    for ( auto const& [ key, value ] : h._fields) {
+    for ( auto const& [ key, value ] : h._fields_rules._fields) {
       w.print(R"(Key: "{}", Value: "{}")", key, value).write('\n');
     }
     w.write("(End Headers)"sv);
@@ -1078,7 +1045,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
       errata.error(R"(Error loading "{}": {})", path, ec);
     } else {
       YAML::Node root;
-      HeaderRules global_rules;
+      HttpFields global_fields_rules;
       try {
         root = YAML::Load(content);
         YamlTransclude::transclude_map(root);
@@ -1091,13 +1058,13 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
           if (meta_node[YAML_GLOBALS_KEY]) {
             auto globals_node{meta_node[YAML_GLOBALS_KEY]};
             // Path not passed to later calls than Load_Replay_File.
-            errata.note(global_rules.parse_rules_plain(globals_node));
+            errata.note(global_fields_rules.parse_fields_node(globals_node));
           }
         } else {
           errata.info(R"(No meta node ("{}") at {} in "{}".)",
                       YAML_META_KEY, root.Mark(), path);
         }
-        handler.config = VerificationConfig{&global_rules};
+        handler.config = VerificationConfig{&global_fields_rules};
         if (root[YAML_SSN_KEY]) {
           auto ssn_list_node{root[YAML_SSN_KEY]};
           if (ssn_list_node.IsSequence()) {
