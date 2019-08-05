@@ -18,19 +18,23 @@
 Preface
 *******
 
-Because this code is used inside an Apache Software Foundation project, it carries the ASF
-copyright. It is not, however, officially affiliated with the ASF. This is my personal project which
-I am pleased to share with the ASF and anyone else.
+This code carries the ASF copyright. It is not, however, officially affiliated with the ASF.
 
-The unit testing coding is divided in to two types. Files that start with "test\_..." are the core
-unit tests. Files that start with "ex\_..." are unit tests that exist to provide example code for
-the documentation. Therefore some of the constructs or arrangement of code in the example files will
-look a bit odd as straight up unit tests. This also means that changing code in any example file
-will likely require updating the documentation, which includes code from those files by line number.
-This is the primary reason for the split, so that the real unit tests can be updated without concern
-for breaking the documentation examples. I wanted the example code in the unit tests in order to
-verify that it compiles and runs. This helps keep the documentation more up to date, particularly
-if there are API changes.
+This project is intended for testing of Apache Traffic Server. This is done by using a mock client
+and server, and providing information to both of them by way of replay files. Once ATS is configured
+in a way such that it will forward responses to the "replay server", the client can send requests,
+which are configured with a list of fields to be sent in an HTTP header, a body of an arbitrary size,
+and other options such as the scheme, version (of HTTP), and so on. These requests are known as
+"client requests". What ATS forwards to the server, known as the "proxy requests", is identified
+(using a uuid) with a "server response", which is sent (if found), and rules for that proxy request,
+which are verified (any errors are reported in verbose mode). ATS forwards a "proxy response" to the
+client, which can then verify that response in the same way that the server validated the proxy
+request. Additionally, fields (for the client request and server response) and rules (for the proxy
+request and response) can be assigned globally, using the global-field-rules node.
+
+The motivating use case envisions certain traffic related to a known bug being recorded, converted into
+a replay file with associated rules for the proxy requests and replies, and detection of any violation
+of those rules, followed by further narrowing down of the replay file to isolate the bug.
 
 Typographic Conventions
 =======================
@@ -49,7 +53,7 @@ Bracketed Monospace
     or commands.
 
     Example:
-        Use ``python3 scripts/replay_generator <number>`` to generate a replay file for issue 2819.
+        Use ``python3 scripts/replay_generator.py <number>`` to generate a replay file for issue 2819.
 
 Ellipsis
     Indicates the omission of irrelevant or unimportant information.

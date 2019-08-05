@@ -1,23 +1,23 @@
 {
     "meta": {
         "version": "1.0",
-        "global_field_rules": {
+        "global-field-rules": {
             "encoding": "esc_json",
             "fields": [
                 [
                     "Host",
                     "example.to_override",
-                    "equals"
+                    "equal"
                 ],
                 [
                     "Fieldthatshouldneverexist",
                     null,
-                    "absence"
+                    "absent"
                 ],
                 [
                     "uuid",
                     null,
-                    "presence"
+                    "present"
                 ]
             ]
         }
@@ -60,7 +60,11 @@
                             [
                                 "Host",
                                 "example.one",
-                                "equals"
+                                "equal"
+                            ],
+                            [
+                                "uuid",
+                                "1"
                             ]
                         ]
                     },
@@ -104,6 +108,10 @@
                                 "Host",
                                 "example.one",
                                 "equals"
+                                ],
+                                [
+                                    "uuid",
+                                    "1"
                                 ]
                             ]
                         }

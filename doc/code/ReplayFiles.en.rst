@@ -24,8 +24,6 @@ Replay Files
 Synopsis
 ********
 
-:code:`#include <core/HttpReplay.h>`
-
 Replay files are the input files for the HttpReplay system. They consist of JSON with certain global
 properties, as well as a list of sessions, which contain more properties that apply to transactions
 listed within each session. Each transaction contains a client request, which represents the request
@@ -51,6 +49,12 @@ Example
 
 Here is a simple example outlining the structure of a replay file. Note the override of the "Host"
 field, the arrays of length 2 in the client request and server response, and the arrays of length 3
-in the proxy request and response.
+in the proxy request and response. Note that the same uuid is present as a field in all four parts of
+a transaction, making an exception to the length 3 rule in the proxy request and response. It is
+optoinal for the proxy response, but required for the request.
 
 .. literalinclude:: ../../json/doc.json
+
+An example with YAML transclusions is below.
+
+.. literalinclude:: ../../json/2819.yaml
