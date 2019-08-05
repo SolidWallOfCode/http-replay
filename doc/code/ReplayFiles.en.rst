@@ -44,8 +44,8 @@ to a certain string), presence (checking a named field exists at all), and absen
 field does not exist). Rules for fields can also be applied globally, to all transactions, by
 listing them in a "global field rules" list at the beginning of the replay file.
 
-Example
-=======
+Examples
+========
 
 Here is a simple example outlining the structure of a replay file. Note the override of the "Host"
 field, the arrays of length 2 in the client request and server response, and the arrays of length 3
@@ -61,4 +61,6 @@ An example with YAML transclusions is below.
 
 A longer example is below. When intending to send a body (the HTTP server will generate one consisting
 of sequential numbers), make sure to include both the Content-Length field in the list of fields in
-addition to the content field (with a nested size field) at the base level of a server response node. 
+addition to the content field (with a nested size field) at the base level of a server response node.
+
+.. literalinclude:: ../../json/2534.yaml
