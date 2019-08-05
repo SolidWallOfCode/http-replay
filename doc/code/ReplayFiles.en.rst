@@ -58,3 +58,7 @@ optoinal for the proxy response, but required for the request.
 An example with YAML transclusions is below.
 
 .. literalinclude:: ../../json/2819.yaml
+
+A longer example is below. When intending to send a body (the HTTP server will generate one consisting
+of sequential numbers), make sure to include both the Content-Length field in the list of fields in
+addition to the content field (with a nested size field) at the base level of a server response node. 
