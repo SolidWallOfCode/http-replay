@@ -393,7 +393,7 @@ swoc::Errata HttpHeader::transmit_body(Stream &stream) const {
        swoc::bwf::If(_content_length_p, "[CL]"),
        swoc::bwf::If(_chunked_p, "[chunked]"));
   if (_content_size > 0 || (_status && !STATUS_NO_CONTENT[_status])) {
-    TextView content { _content_data, _content_size };
+    TextView content{_content_data, _content_size};
     if (_chunked_p) {
       ChunkCodex codex;
       std::tie(n, ec) = codex.transmit(stream, content);
@@ -411,7 +411,8 @@ swoc::Errata HttpHeader::transmit_body(Stream &stream) const {
                    swoc::bwf::If(_chunked_p, " [chunked]"), n, _content_size,
                    ec);
     }
-  } else if (_content_size == 0 && _status && !STATUS_NO_CONTENT[_status] && !_chunked_p && !_content_length_p) {
+  } else if (_content_size == 0 && _status && !STATUS_NO_CONTENT[_status] &&
+             !_chunked_p && !_content_length_p) {
     // There's no body but the status expects one, so signal no body with EOS.
     Info("No CL or TE, status {} - closing.", _status);
     stream.close();
@@ -684,44 +685,50 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
   }
 
   // Do this after header so it can override transfer encoding.
-  if (auto content_node { node[YAML_CONTENT_KEY] } ; content_node ) {
+  if (auto content_node{node[YAML_CONTENT_KEY]}; content_node) {
     if (content_node.IsMap()) {
-      if (auto xf_node { content_node[YAML_CONTENT_TRANSFER_KEY] } ; xf_node ) {
-        TextView xf { xf_node.Scalar() };
+      if (auto xf_node{content_node[YAML_CONTENT_TRANSFER_KEY]}; xf_node) {
+        TextView xf{xf_node.Scalar()};
         if (0 == strcasecmp("chunked"_tv, xf)) {
           _chunked_p = true;
         } else if (0 == strcasecmp("plain"_tv, xf)) {
           _chunked_p = false;
         } else {
-          errata.error(R"(Invalid value "{}" for "{}" key at {} in "{}" node at )"
-          , xf, YAML_CONTENT_TRANSFER_KEY, xf_node.Mark()
-          , YAML_CONTENT_KEY, content_node.Mark());
+          errata.error(
+              R"(Invalid value "{}" for "{}" key at {} in "{}" node at )", xf,
+              YAML_CONTENT_TRANSFER_KEY, xf_node.Mark(), YAML_CONTENT_KEY,
+              content_node.Mark());
         }
       }
-      if (auto data_node { content_node[YAML_CONTENT_DATA_KEY] } ; data_node) {
-        Encoding enc { Encoding::TEXT };
-        if (auto enc_node { content_node[YAML_CONTENT_ENCODING_KEY] } ; enc_node) {
-          TextView text { enc_node.Scalar() };
+      if (auto data_node{content_node[YAML_CONTENT_DATA_KEY]}; data_node) {
+        Encoding enc{Encoding::TEXT};
+        if (auto enc_node{content_node[YAML_CONTENT_ENCODING_KEY]}; enc_node) {
+          TextView text{enc_node.Scalar()};
           if (0 == strcasecmp("uri"_tv, text)) {
             enc = Encoding::URI;
           } else if (0 == strcasecmp("plain"_tv, text)) {
             enc = Encoding::TEXT;
           } else {
-            errata.error(R"(Unknown encoding "{}" at {}.)", text, enc_node.Mark());
+            errata.error(R"(Unknown encoding "{}" at {}.)", text,
+                         enc_node.Mark());
           }
         }
-        TextView content { this->localize(data_node.Scalar(), enc) };
+        TextView content{this->localize(data_node.Scalar(), enc)};
         _content_data = content.data();
         _content_size = content.size();
         if (content_node[YAML_CONTENT_LENGTH_KEY]) {
-          errata.info(R"(The "{}" key is ignored if "{}" is present at {}.)", YAML_CONTENT_LENGTH_KEY
-          , YAML_CONTENT_DATA_KEY, content_node.Mark());
+          errata.info(R"(The "{}" key is ignored if "{}" is present at {}.)",
+                      YAML_CONTENT_LENGTH_KEY, YAML_CONTENT_DATA_KEY,
+                      content_node.Mark());
         }
-      } else if (auto size_node { content_node[YAML_CONTENT_LENGTH_KEY]} ; size_node) {
+      } else if (auto size_node{content_node[YAML_CONTENT_LENGTH_KEY]};
+                 size_node) {
         _content_size = swoc::svtou(size_node.Scalar());
       } else {
-        errata.error(R"("{}" node at {} does not have a "{}" or "{}" key as required.)", YAML_CONTENT_KEY
-            , node.Mark(), YAML_CONTENT_LENGTH_KEY, YAML_CONTENT_DATA_KEY );
+        errata.error(
+            R"("{}" node at {} does not have a "{}" or "{}" key as required.)",
+            YAML_CONTENT_KEY, node.Mark(), YAML_CONTENT_LENGTH_KEY,
+            YAML_CONTENT_DATA_KEY);
       }
     } else {
       errata.error(R"("{}" node at {} is not a map.)", YAML_CONTENT_KEY,
@@ -768,15 +775,15 @@ swoc::TextView HttpHeader::localize(TextView text, Encoding enc) {
     auto spot = text.begin(), limit = text.end();
     char *dst = span.begin();
     while (spot < limit) {
-      if (*spot == '%' &&
-          (spot + 1 < limit && isxdigit(spot[1]) && (spot + 2 < limit && isxdigit(spot[2])))) {
+      if (*spot == '%' && (spot + 1 < limit && isxdigit(spot[1]) &&
+                           (spot + 2 < limit && isxdigit(spot[2])))) {
         *dst++ = swoc::svto_radix<16>(TextView{spot + 1, spot + 3});
         spot += 3;
       } else {
         *dst++ = *spot++;
       }
     }
-    TextView text { span.data(), dst };
+    TextView text{span.data(), dst};
     _arena.alloc(text.size());
     return text;
   }
@@ -796,7 +803,8 @@ HttpHeader::parse_request(swoc::TextView data) {
     if (first_line) {
       first_line.remove_suffix_if(&isspace);
       _method = this->localize(first_line.take_prefix_if(&isspace));
-      _url = this->localize(first_line.ltrim_if(&isspace).take_prefix_if(&isspace));
+      _url = this->localize(
+          first_line.ltrim_if(&isspace).take_prefix_if(&isspace));
 
       while (data) {
         auto field{data.take_prefix_at('\n').rtrim_if(&isspace)};

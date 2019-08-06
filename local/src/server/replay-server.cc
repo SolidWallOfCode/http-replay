@@ -386,13 +386,16 @@ void Engine::command_run() {
     errata.clear();
   }
 
-  // After this, any string expected to be localized that isn't is an error, so lock down the local
-  // string storage to avoid runtime locking and report an error instead if not found.
+  // After this, any string expected to be localized that isn't is an error, so
+  // lock down the local string storage to avoid runtime locking and report an
+  // error instead if not found.
   HttpHeader::_frozen = true;
   size_t max_content_length = 0;
   for (auto const &[key, txn] : Transactions) {
-    if (txn._rsp._content_data == nullptr) { // don't check responses with literal content.
-      max_content_length = std::max<size_t>(max_content_length, txn._rsp._content_size);
+    if (txn._rsp._content_data ==
+        nullptr) { // don't check responses with literal content.
+      max_content_length =
+          std::max<size_t>(max_content_length, txn._rsp._content_size);
     }
   }
   HttpHeader::set_max_content_length(max_content_length);
