@@ -49,11 +49,6 @@ swoc::TextView HttpHeader::FIELD_CONTENT_LENGTH;
 swoc::TextView HttpHeader::FIELD_TRANSFER_ENCODING;
 std::bitset<600> HttpHeader::STATUS_NO_CONTENT;
 
-// libswoc tweaks not yet ported upstream.
-namespace swoc {
-template<int N> uintmax_t svto_radix(TextView && src) { return svto_radix<N>(src); }
-} // namespace swoc
-
 namespace {
 [[maybe_unused]] bool INITIALIZED = []() -> bool {
   HttpHeader::global_init();
