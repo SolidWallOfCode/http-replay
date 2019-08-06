@@ -37,6 +37,7 @@
 /lib/pkgconfig
 /lib64
 /cmake-build-release
+.vscode
 
 # Default parts directories
 \.parts\.cache
@@ -44,3 +45,5 @@
 \.sconsign\.dblite
 
 dist/
+
+*.lock
