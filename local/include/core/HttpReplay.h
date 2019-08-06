@@ -282,10 +282,11 @@ public:
 
   unsigned _status = 0;
   TextView _reason;
-  /// If @a content_size is valid but not @a content_data, synthesize the content.
-  /// This is split instead of @c TextView because these get set independently during load.
-  char const* _content_data = nullptr; ///< Literal data for the content.
-  size_t _content_size = 0; ///< Length of the content.
+  /// If @a content_size is valid but not @a content_data, synthesize the
+  /// content. This is split instead of @c TextView because these get set
+  /// independently during load.
+  char const *_content_data = nullptr; ///< Literal data for the content.
+  size_t _content_size = 0;            ///< Length of the content.
   TextView _method;
   TextView _http_version;
   std::string _url;
@@ -346,7 +347,7 @@ protected:
   /// Encoding for input text.
   enum class Encoding {
     TEXT, ///< Plain text, no encoding.
-    URI //< URI encoded.
+    URI   //< URI encoded.
   };
 
   /** Convert @a name to a localized view.
