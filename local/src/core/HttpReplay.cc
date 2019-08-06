@@ -21,6 +21,7 @@
  */
 
 #include "core/HttpReplay.h"
+#include "core/yaml_util.h"
 
 #include <dirent.h>
 #include <netdb.h>
@@ -901,6 +902,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
       YAML::Node root;
       try {
         root = YAML::Load(content);
+        yaml_merge(root);
       } catch (std::exception const &ex) {
         errata.warn(R"(Exception: {} in "{}".)", ex.what(), path);
       }
