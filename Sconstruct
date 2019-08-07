@@ -50,4 +50,5 @@ Part(
 )
 
 Part("local/parts/http-replay.part", package_group="http-replay")
+Part("unit_tests/unit_tests.part")
 
