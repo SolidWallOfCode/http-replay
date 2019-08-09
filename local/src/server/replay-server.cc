@@ -127,6 +127,7 @@ swoc::Errata ServerReplayFileHandler::txn_open(YAML::Node const &node) {
 }
 
 swoc::Errata ServerReplayFileHandler::proxy_request(YAML::Node const &node) {
+  _txn._req._fields_rules = *config.txn_rules;
   swoc::Errata errata = _txn._req.load(node);
   if (errata.is_ok()) {
     _key = _txn._req.make_key();
@@ -137,8 +138,8 @@ swoc::Errata ServerReplayFileHandler::proxy_request(YAML::Node const &node) {
 swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
   auto errata{_txn._rsp.load(node)};
   if (errata.is_ok()) {
-    if (auto spot{_txn._rsp._fields.find(HttpHeader::FIELD_CONTENT_LENGTH)};
-        spot != _txn._rsp._fields.end()) {
+    if (auto spot{_txn._rsp._fields_rules._fields.find(HttpHeader::FIELD_CONTENT_LENGTH)};
+        spot != _txn._rsp._fields_rules._fields.end()) {
       TextView src{spot->second}, parsed;
       auto cl = swoc::svtou(src, &parsed);
       if (parsed.size() == src.size()) {
@@ -187,7 +188,7 @@ void TF_Serve(std::thread *t) {
         auto result{
             req_hdr.parse_request(swoc::TextView(w.data(), body_offset))};
         if (result.is_ok()) {
-          Info("Handling request");
+          Info("Handling request.");
           auto key{req_hdr.make_key()};
           auto spot{Transactions.find(key)};
           if (spot != Transactions.end()) {
@@ -198,6 +199,11 @@ void TF_Serve(std::thread *t) {
               Info("Draining request body.");
               errata = req_hdr.drain_body(*(info._stream),
                                           w.view().substr(body_offset));
+            }
+            Info("Validating request.");
+            Info("{}", req_hdr);
+            if (req_hdr.verify_headers(txn._req._fields_rules)) {
+              errata.error(R"(Request headers did not match expected request headers.)");
             }
             Info("Responding to request - status {}.", txn._rsp._status);
             errata = txn._rsp.transmit(*(info._stream));
