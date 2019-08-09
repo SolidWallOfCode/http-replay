@@ -29,7 +29,7 @@ using swoc::TextView;
 
 struct Txn {
   HttpHeader _req; ///< Request to send.
-  HttpHeader _rsp; ///< Response to expect.
+  HttpHeader _rsp; ///< Rules for response to expect.
 };
 
 struct Ssn {
@@ -183,6 +183,7 @@ swoc::Errata ClientReplayFileHandler::proxy_request(YAML::Node const &node) {
 
 swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
   if (!Proxy_Mode) {
+    _txn._rsp._fields_rules = *config.txn_rules;
     return _txn._rsp.load(node);
   }
   return {};
@@ -190,6 +191,7 @@ swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
 
 swoc::Errata ClientReplayFileHandler::server_response(YAML::Node const &node) {
   if (Proxy_Mode) {
+    _txn._rsp._fields_rules = *config.txn_rules;
     return _txn._rsp.load(node);
   }
   return {};
@@ -210,7 +212,7 @@ swoc::Errata ClientReplayFileHandler::ssn_close() {
   return {};
 }
 
-void do_error() { printf("Bad stuff\n"); }
+void do_error() { printf("Errors:\n"); }
 
 swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
   Info("Running transaction.");
@@ -243,12 +245,18 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
             return errata;
           }
         }
-        if (rsp_hdr._status != txn._rsp._status && rsp_hdr._status != 200 &&
-            rsp_hdr._status != 304 && txn._rsp._status != 200 &&
-            txn._rsp._status != 304) {
+        Info(R"(Status: "{}")", rsp_hdr._status);
+        Info("{}", rsp_hdr);
+        if (rsp_hdr._status != txn._rsp._status && (rsp_hdr._status != 200 ||
+            txn._rsp._status != 304) && (rsp_hdr._status != 304 ||
+            txn._rsp._status != 200)) {
           errata.error(R"(Invalid status expected {} got {}. url={}.)",
                        txn._rsp._status, rsp_hdr._status, txn._req._url);
           do_error();
+          return errata;
+        }
+        if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
+          errata.error(R"(Response headers did not match expected response headers.)");
           return errata;
         }
         Info("Reading response body offset={}.", w.view().substr(body_offset));
