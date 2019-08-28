@@ -53,11 +53,6 @@ std::bitset<600> HttpHeader::STATUS_NO_CONTENT;
 
 RuleCheck::RuleOptions RuleCheck::options;
 
-// libswoc tweaks not yet ported upstream.
-namespace swoc {
-template<int N> uintmax_t svto_radix(TextView && src) { return svto_radix<N>(src); }
-} // namespace swoc
-
 namespace {
 [[maybe_unused]] bool INITIALIZED = []() -> bool {
   HttpHeader::global_init();
@@ -97,6 +92,196 @@ ssize_t TLSStream::read(swoc::MemSpan<char> span) {
 
 ssize_t Stream::write(swoc::TextView view) {
   return ::write(_fd, view.data(), view.size());
+}
+
+ssize_t Stream::write(HttpHeader const &hdr, swoc::Errata errata) {
+  // 1. header.serialize, write it out
+  // 2. transmit the body 
+  swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
+  swoc::Errata err; 
+  ssize_t n;
+
+  err = hdr.serialize(w); 
+
+  if (err.is_ok()) {
+    n = write(w.view());
+
+    if (n == w.size()) {
+      write_body(hdr);
+    } else {
+      errata.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
+                   w.size(), swoc::bwf::Errno{});
+    }
+  } else {
+    errata.error(R"(Unable to write header.)");
+    errata.note(err);
+  }
+
+  return n;
+}
+
+swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) { 
+  swoc::Rv<ssize_t> zret{-1};
+
+  Info("Reading header.");
+  while (w.remaining() > 0) {
+    auto n = read(w.aux_span());
+    if (!is_closed()) {
+      // Where to start searching for the EOH string.
+      size_t start =
+          std::max<size_t>(w.size(), HTTP_EOH.size()) - HTTP_EOH.size();
+      w.commit(n);
+      size_t offset = w.view().substr(start).find(HTTP_EOH);
+      if (TextView::npos != offset) {
+        zret = start + offset + HTTP_EOH.size();
+        break;
+      }
+    } else {
+      if (w.size()) {
+        zret.errata().error(
+            R"(Connection closed unexpectedly after {} bytes while waiting for header - {}.)",
+            w.size(), swoc::bwf::Errno{});
+        printf("error\n");
+      } else {
+        zret = 0; // clean close between transactions.
+      }
+      break;
+    }
+  }
+  if (zret.is_ok() && zret == -1) {
+    zret.errata().error(R"(Header exceeded maximum size {}.)", w.capacity());
+  }
+  return std::move(zret);
+}
+
+swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
+  static constexpr size_t UNBOUNDED = std::numeric_limits<size_t>::max();
+  swoc::Errata errata;
+  size_t body_size = 0; // bytes drained for the content body.
+  std::string buff;
+  size_t content_length = hdr._content_length_p ? hdr._content_size : UNBOUNDED;
+  if (content_length < initial.size()) {
+    errata.error(
+        R"(Response overrun - received {} bytes of content, expected {}.)",
+        initial.size(), content_length);
+    return errata;
+  }
+
+  // If there's a status, and it indicates no body, we're done.
+  if (hdr._status && HttpHeader::STATUS_NO_CONTENT[hdr._status] && !hdr._content_length_p &&
+      !hdr._chunked_p) {
+    return errata;
+  }
+
+  buff.reserve(std::min<size_t>(content_length, MAX_DRAIN_BUFFER_SIZE));
+
+  if (is_closed()) {
+    errata.error(R"(drain_body: stream closed) could not read {} bytes)",
+                 content_length);
+    return errata;
+  }
+
+  if (hdr._chunked_p) {
+    ChunkCodex::ChunkCallback cb{
+        [&](TextView block, size_t offset, size_t size) -> bool {
+          body_size += block.size();
+          return true;
+        }};
+    ChunkCodex codex;
+
+    auto result = codex.parse(initial, cb);
+    while (result == ChunkCodex::CONTINUE && body_size < content_length) {
+      auto n{
+          read({buff.data(), std::min<size_t>(content_length - body_size,
+                                                     MAX_DRAIN_BUFFER_SIZE)})};
+      if (!is_closed()) {
+        result = codex.parse(TextView(buff.data(), n), cb);
+      } else {
+        if (content_length == UNBOUNDED) {
+          // Is this an error? It's chunked, so an actual close seems unexpected
+          // - should have parsed the empty chunk.
+          Info("Connection closed on unbounded body.");
+          result = ChunkCodex::DONE;
+        } else {
+          errata.error(
+              R"(Response underrun - received {} bytes of content, expected {}, when file closed because {}.)",
+              body_size, content_length, swoc::bwf::Errno{});
+        }
+        break;
+      }
+    }
+    if (result != ChunkCodex::DONE ||
+        (content_length != UNBOUNDED && body_size != content_length)) {
+      errata.error(R"(Invalid response - expected {} bytes, drained {} byts.)",
+                   content_length, body_size);
+      return errata;
+    }
+    Info("Drained {} chunked bytes.", body_size);
+  } else {
+    body_size = initial.size();
+    while (body_size < content_length) {
+      ssize_t n = read({buff.data(), std::min(content_length - body_size,
+                                                     MAX_DRAIN_BUFFER_SIZE)});
+      if (is_closed()) {
+        if (content_length == UNBOUNDED) {
+          Info("Connection close on unbounded body");
+        } else {
+          errata.error(
+              R"(Response underrun - received {} bytes  of content, expected {}, when file closed because {}.)",
+              body_size, content_length, swoc::bwf::Errno{});
+        }
+        break;
+      }
+      body_size += n;
+    }
+    if (body_size > content_length) {
+      errata.error(
+          R"(Invalid response - expected {} fixed bytes, drained {} byts.)",
+          content_length, body_size);
+      return errata;
+    }
+    Info("Drained {} bytes.", body_size);
+  }
+  return errata;
+}
+
+swoc::Errata Stream::write_body(HttpHeader const &hdr) {
+  swoc::Errata errata;
+  ssize_t n;
+  std::error_code ec; 
+
+  Info("Transmit {} byte body {}{}.", hdr._content_size,
+       swoc::bwf::If(hdr._content_length_p, "[CL]"),
+       swoc::bwf::If(hdr._chunked_p, "[chunked]"));
+
+  if (hdr._content_size > 0 || (hdr._status && !HttpHeader::STATUS_NO_CONTENT[hdr._status])) {
+    TextView content{hdr._content_data, hdr._content_size};
+
+    if (hdr._chunked_p) {
+      ChunkCodex codex;
+      std::tie(n, ec) = codex.transmit(*this, content);
+    } else {
+      n = write(content);
+      ec = std::error_code(errno, std::system_category());
+
+      if (!hdr._content_length_p) { // no content-length, must close to signal end of body
+        Info("No CL, status {} - closing.", hdr._status);
+        close();
+      }
+    }
+
+    if (n != hdr._content_size) {
+      errata.error(R"(Body write{} failed - {} of {} bytes written - {}.)",
+                   swoc::bwf::If(hdr._chunked_p, " [chunked]"), n, hdr._content_size, ec);
+    }
+  } else if (hdr._content_size == 0 && hdr._status && !HttpHeader::STATUS_NO_CONTENT[hdr._status] &&
+             !hdr._chunked_p && !hdr._content_length_p) {
+    // There's no body but the status expects one, so signal no body with EOS.
+    Info("No CL or TE, status {} - closing.", hdr._status);
+    close();
+  }
+
+  return errata;
 }
 
 ssize_t TLSStream::write(swoc::TextView view) {
@@ -185,7 +370,7 @@ void TLSStream::close() {
       SSL_free(_ssl);
       _ssl = nullptr;
     }
-    super::close();
+    super_type::close();
   }
 }
 
@@ -470,209 +655,23 @@ swoc::Errata HttpHeader::update_transfer_encoding() {
   return {};
 }
 
-swoc::Errata HttpHeader::transmit_body(Stream &stream) const {
-  swoc::Errata errata;
-  ssize_t n;
-  std::error_code ec;
-
-  Info("Transmit {} byte body {}{}.", _content_size,
-       swoc::bwf::If(_content_length_p, "[CL]"),
-       swoc::bwf::If(_chunked_p, "[chunked]"));
-  if (_content_size > 0 || (_status && !STATUS_NO_CONTENT[_status])) {
-    TextView content{_content_data, _content_size};
-    if (_chunked_p) {
-      ChunkCodex codex;
-      std::tie(n, ec) = codex.transmit(stream, content);
-    } else {
-      n = stream.write(content);
-      ec = std::error_code(errno, std::system_category());
-      if (!_content_length_p) { // no content-length, must close to signal end
-                                // of body.
-        Info("No CL, status {} - closing.", _status);
-        stream.close();
-      }
-    }
-    if (n != _content_size) {
-      errata.error(R"(Body write{} failed - {} of {} bytes written - {}.)",
-                   swoc::bwf::If(_chunked_p, " [chunked]"), n, _content_size,
-                   ec);
-    }
-  } else if (_content_size == 0 && _status && !STATUS_NO_CONTENT[_status] &&
-             !_chunked_p && !_content_length_p) {
-    // There's no body but the status expects one, so signal no body with EOS.
-    Info("No CL or TE, status {} - closing.", _status);
-    stream.close();
-  }
-
-  return errata;
-}
-
-swoc::Errata HttpHeader::transmit(Stream &stream) const {
-  swoc::Errata errata;
-  if (stream.is_closed()) {
-    errata.error(R"(Transmit stream is closed)");
-    return errata;
-  }
+swoc::Errata HttpHeader::serialize(swoc::BufferWriter &w) const {
+  swoc::Errata errata; 
 
   if (_status) {
-    swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
     w.print("HTTP/{} {} {}{}", _http_version, _status, _reason, HTTP_EOL);
-    for (auto const &[name, value] : _fields_rules._fields) {
-      w.write(name).write(": ").write(value).write(HTTP_EOL);
-    }
-    w.write(HTTP_EOL);
-    ssize_t n = stream.write(w.view());
-    if (n == w.size()) {
-      errata = this->transmit_body(stream);
-    } else {
-      errata.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
-                   w.size(), swoc::bwf::Errno{});
-    }
   } else if (_method) {
-    swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
     w.print("{} {} HTTP/{}{}", _method, _url, _http_version, HTTP_EOL);
-    for (auto const &[name, value] : _fields_rules._fields) {
-      w.write(name).write(": ").write(value).write(HTTP_EOL);
-    }
-    w.write(HTTP_EOL);
-    ssize_t n = stream.write({w.data(), w.size()});
-    if (n == w.size()) {
-      errata = this->transmit_body(stream);
-    } else {
-      errata.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
-                   w.size(), swoc::bwf::Errno{});
-    }
   } else {
     errata.error(R"(Unable to write header - no status nor method.)");
   }
+
+  for (auto const &[name, value] : _fields_rules._fields) {
+    w.write(name).write(": ").write(value).write(HTTP_EOL);
+  }
+  w.write(HTTP_EOL);
+
   return errata;
-}
-
-swoc::Errata HttpHeader::drain_body(Stream &stream,
-                                    swoc::TextView initial) const {
-  static constexpr size_t UNBOUNDED = std::numeric_limits<size_t>::max();
-  swoc::Errata errata;
-  size_t body_size = 0; // bytes drained for the content body.
-  std::string buff;
-  size_t content_length = _content_length_p ? _content_size : UNBOUNDED;
-  if (content_length < initial.size()) {
-    errata.error(
-        R"(Response overrun - received {} bytes of content, expected {}.)",
-        initial.size(), content_length);
-    return errata;
-  }
-
-  // If there's a status, and it indicates no body, we're done.
-  if (_status && STATUS_NO_CONTENT[_status] && !_content_length_p &&
-      !_chunked_p) {
-    return errata;
-  }
-
-  buff.reserve(std::min<size_t>(content_length, MAX_DRAIN_BUFFER_SIZE));
-
-  if (stream.is_closed()) {
-    errata.error(R"(drain_body: stream closed) could not read {} bytes)",
-                 content_length);
-    return errata;
-  }
-
-  if (_chunked_p) {
-    ChunkCodex::ChunkCallback cb{
-        [&](TextView block, size_t offset, size_t size) -> bool {
-          body_size += block.size();
-          return true;
-        }};
-    ChunkCodex codex;
-
-    auto result = codex.parse(initial, cb);
-    while (result == ChunkCodex::CONTINUE && body_size < content_length) {
-      auto n{
-          stream.read({buff.data(), std::min<size_t>(content_length - body_size,
-                                                     MAX_DRAIN_BUFFER_SIZE)})};
-      if (!stream.is_closed()) {
-        result = codex.parse(TextView(buff.data(), n), cb);
-      } else {
-        if (content_length == UNBOUNDED) {
-          // Is this an error? It's chunked, so an actual close seems unexpected
-          // - should have parsed the empty chunk.
-          Info("Connection closed on unbounded body.");
-          result = ChunkCodex::DONE;
-        } else {
-          errata.error(
-              R"(Response underrun - received {} bytes of content, expected {}, when file closed because {}.)",
-              body_size, content_length, swoc::bwf::Errno{});
-        }
-        break;
-      }
-    }
-    if (result != ChunkCodex::DONE ||
-        (content_length != UNBOUNDED && body_size != content_length)) {
-      errata.error(R"(Invalid response - expected {} bytes, drained {} byts.)",
-                   content_length, body_size);
-      return errata;
-    }
-    Info("Drained {} chunked bytes.", body_size);
-  } else {
-    body_size = initial.size();
-    while (body_size < content_length) {
-      ssize_t n = stream.read({buff.data(), std::min(content_length - body_size,
-                                                     MAX_DRAIN_BUFFER_SIZE)});
-      if (stream.is_closed()) {
-        if (content_length == UNBOUNDED) {
-          Info("Connection close on unbounded body");
-        } else {
-          errata.error(
-              R"(Response underrun - received {} bytes  of content, expected {}, when file closed because {}.)",
-              body_size, content_length, swoc::bwf::Errno{});
-        }
-        break;
-      }
-      body_size += n;
-    }
-    if (body_size > content_length) {
-      errata.error(
-          R"(Invalid response - expected {} fixed bytes, drained {} byts.)",
-          content_length, body_size);
-      return errata;
-    }
-    Info("Drained {} bytes.", body_size);
-  }
-  return errata;
-}
-
-swoc::Rv<ssize_t> HttpHeader::read_header(Stream &reader,
-                                          swoc::FixedBufferWriter &w) {
-  swoc::Rv<ssize_t> zret{-1};
-
-  Info("Reading header.");
-  while (w.remaining() > 0) {
-    auto n = reader.read(w.aux_span());
-    if (!reader.is_closed()) {
-      // Where to start searching for the EOH string.
-      size_t start =
-          std::max<size_t>(w.size(), HTTP_EOH.size()) - HTTP_EOH.size();
-      w.commit(n);
-      size_t offset = w.view().substr(start).find(HTTP_EOH);
-      if (TextView::npos != offset) {
-        zret = start + offset + HTTP_EOH.size();
-        break;
-      }
-    } else {
-      if (w.size()) {
-        zret.errata().error(
-            R"(Connection closed unexpectedly after {} bytes while waiting for header - {}.)",
-            w.size(), swoc::bwf::Errno{});
-        printf("error\n");
-      } else {
-        zret = 0; // clean close between transactions.
-      }
-      break;
-    }
-  }
-  if (zret.is_ok() && zret == -1) {
-    zret.errata().error(R"(Header exceeded maximum size {}.)", w.capacity());
-  }
-  return std::move(zret);
 }
 
 swoc::Errata HttpFields::parse_fields_node(YAML::Node const &node) {

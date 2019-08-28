@@ -178,27 +178,31 @@ void TF_Serve(std::thread *t) {
     while (!info._stream->is_closed() && errata.is_ok()) {
       HttpHeader req_hdr;
       swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-      auto read_result{req_hdr.read_header(*(info._stream), w)};
+      auto read_result{info._stream->read_header(w)};
 
       if (read_result.is_ok()) {
         ssize_t body_offset = read_result;
+
         if (0 == body_offset) {
           break; // client closed between transactions, that's not an error.
         }
-        auto result{
-            req_hdr.parse_request(swoc::TextView(w.data(), body_offset))};
+
+        auto result{req_hdr.parse_request(swoc::TextView(w.data(), body_offset))};
+
         if (result.is_ok()) {
           Info("Handling request.");
           auto key{req_hdr.make_key()};
           auto spot{Transactions.find(key)};
+
           if (spot != Transactions.end()) {
             [[maybe_unused]] auto const &[key, txn] = *spot;
+
             req_hdr.update_content_length(req_hdr._method);
             req_hdr.update_transfer_encoding();
+
             if (req_hdr._content_length_p || req_hdr._chunked_p) {
               Info("Draining request body.");
-              errata = req_hdr.drain_body(*(info._stream),
-                                          w.view().substr(body_offset));
+              errata = info._stream->drain_body(req_hdr, w.view().substr(body_offset));
             }
             Info("Validating request.");
             Info("{}", req_hdr);
@@ -206,7 +210,7 @@ void TF_Serve(std::thread *t) {
               errata.error(R"(Request headers did not match expected request headers.)");
             }
             Info("Responding to request - status {}.", txn._rsp._status);
-            errata = txn._rsp.transmit(*(info._stream));
+            info._stream->write(txn._rsp, errata);
           } else {
             errata.error(R"(Proxy request with key "{}" not found.)", key);
           }
