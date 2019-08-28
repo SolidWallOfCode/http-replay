@@ -1,6 +1,13 @@
 Import("*")
 PartVersion("1.0.0")
 PartName("http-replay")
+
+DependsOn([
+    "http-replay.core",
+    "http-replay.replay-client",
+    "http-replay.replay-server"
+])
+
 env.Part("${PART_NAME}.rpm.part")
 
 env.Part("../src/core/core.part")
