@@ -92,113 +92,6 @@ namespace swoc {
   BufferWriter& bwformat(BufferWriter& w, bwf::Spec const& spec, HttpHeader const& h);
 }
 
-/** A stream reader.
- * This is essential a wrapper around a socket to support use of @c epoll on the
- * socket. The goal is to enable a read operation that waits for data but
- * returns as soon as any data is available.
- */
-class Stream {
-public:
-  Stream();
-  virtual ~Stream();
-
-  int fd() const;
-  virtual ssize_t read(swoc::MemSpan<char> span);
-  virtual ssize_t write(swoc::TextView data);
-  virtual swoc::Errata accept();
-  virtual swoc::Errata connect();
-
-  virtual swoc::Errata open(int fd);
-  bool is_closed() const;
-  virtual void close();
-
-protected:
-  int _fd = -1; ///< Socket.
-};
-
-inline int Stream::fd() const { return _fd; }
-inline bool Stream::is_closed() const { return _fd < 0; }
-
-class TLSStream : public Stream {
-public:
-  using super = Stream;
-  virtual ssize_t read(swoc::MemSpan<char> span) override;
-  virtual ssize_t write(swoc::TextView data) override;
-  ~TLSStream() override {
-    if (_ssl)
-      SSL_free(_ssl);
-  }
-
-  void close() override;
-  swoc::Errata accept() override;
-  swoc::Errata connect() override;
-  static swoc::Errata init();
-  static swoc::file::path certificate_file;
-  static swoc::file::path privatekey_file;
-
-protected:
-  SSL *_ssl = nullptr;
-  static SSL_CTX *server_ctx;
-  static SSL_CTX *client_ctx;
-};
-
-class ChunkCodex {
-public:
-  /// The callback when a chunk is decoded.
-  /// @param chunk Data for the chunk in the provided view.
-  /// @param offset The offset from the full chunk for @a chunk.
-  /// @param size The size of the full chunk.
-  /// Because the data provided might not contain the entire chunk, a chunk can
-  /// come back piecemeal in the callbacks. The @a offset and @a size specify
-  /// where in the actual chunk the particular piece in @a chunk is placed.
-  using ChunkCallback =
-      std::function<bool(swoc::TextView chunk, size_t offset, size_t size)>;
-  enum Result { CONTINUE, DONE, ERROR };
-
-  /** Parse @a data as chunked encoded.
-   *
-   * @param data Data to parse.
-   * @param cb Callback to receive decoded chunks.
-   * @return Parsing result.
-   *
-   * The parsing is designed to be restartable so that data can be passed
-   * directly from the socket to this object, without doing any gathering.
-   */
-  Result parse(swoc::TextView data, ChunkCallback const &cb);
-
-  /** Write @a data to @a fd using chunked encoding.
-   *
-   * @param fd Output file descriptor.
-   * @param data [in,out] Data to write.
-   * @param chunk_size Size of chunks.
-   * @return A pair of
-   *   - The number of bytes written from @a data (not including the chunk
-   * encoding).
-   *   - An error code, which will be 0 if all data was successfully written.
-   */
-  std::tuple<ssize_t, std::error_code>
-  transmit(Stream &stream, swoc::TextView data, size_t chunk_size = 4096);
-
-protected:
-  size_t _size = 0; ///< Size of the current chunking being decoded.
-  size_t _off =
-      0; ///< Number of bytes in the current chunk already sent to the callback.
-  /// Buffer to hold size text in case it falls across @c parse call boundaries.
-  swoc::LocalBufferWriter<16> _size_text;
-
-  /// Parsing state.
-  enum class State {
-    INIT, ///< Initial state, no parsing has occurred.
-    SIZE, ///< Parsing the chunk size.
-    CR,   ///< Expecting the size terminating CR
-    LF,   ///< Expecting the size terminating LF.
-    BODY, ///< Inside the chunk body.
-    POST_BODY_CR,
-    POST_BODY_LF,
-    FINAL ///< Terminating (size zero) chunk parsed.
-  } _state = State::INIT;
-};
-
 struct Hash {
   swoc::Hash64FNV1a::value_type operator()(swoc::TextView view) const {
     return swoc::Hash64FNV1a{}.hash_immediate(
@@ -399,13 +292,7 @@ public:
    * reading. This must be checked by the caller by calling @c
    * reader.is_closed().
    */
-  swoc::Rv<ssize_t> read_header(Stream &reader, swoc::FixedBufferWriter &w);
-
-  /** Write the header to @a fd.
-   *
-   * @param fd Ouput stream.
-   */
-  swoc::Errata transmit(Stream &stream) const;
+  // swoc::Rv<ssize_t> read_header(Stream &reader, swoc::FixedBufferWriter &w);
 
   /** Write the body to @a fd.
    *
@@ -414,7 +301,7 @@ public:
    *
    * This synthesizes the content based on values in the header.
    */
-  swoc::Errata transmit_body(Stream &stream) const;
+  // swoc::Errata transmit_body(Stream &stream) const;
 
   /** Drain the content.
    *
@@ -430,7 +317,7 @@ public:
    * @a initial is needed for cases where part of the content is captured while
    * trying to read the header.
    */
-  swoc::Errata drain_body(Stream &stream, TextView initial) const;
+  // swoc::Errata drain_body(Stream &stream, TextView initial) const;
 
   swoc::Errata load(YAML::Node const &node);
 
@@ -439,6 +326,8 @@ public:
 
   swoc::Errata update_content_length(TextView method);
   swoc::Errata update_transfer_encoding();
+
+  swoc::Errata serialize(swoc::BufferWriter &w) const;
 
   std::string make_key();
 
@@ -538,6 +427,116 @@ protected:
 
   static NameSet _names;
   static swoc::MemArena _arena;
+};
+
+/** A stream reader.
+ * This is essential a wrapper around a socket to support use of @c epoll on the
+ * socket. The goal is to enable a read operation that waits for data but
+ * returns as soon as any data is available.
+ */
+class Stream {
+public:
+  Stream();
+  virtual ~Stream();
+
+  int fd() const;
+  virtual ssize_t read(swoc::MemSpan<char> span);
+  virtual ssize_t write(swoc::TextView data);
+  virtual ssize_t write(HttpHeader const &hdr, swoc::Errata errata);
+  virtual swoc::Errata write_body(HttpHeader const &hdr);
+  virtual swoc::Errata accept();
+  virtual swoc::Errata connect();
+  virtual swoc::Rv<ssize_t> read_header(swoc::FixedBufferWriter &w);
+  virtual swoc::Errata drain_body(HttpHeader &hdr, swoc::TextView initial);
+
+  virtual swoc::Errata open(int fd);
+  bool is_closed() const;
+  virtual void close();
+
+protected:
+  int _fd = -1; ///< Socket.
+};
+
+inline int Stream::fd() const { return _fd; }
+inline bool Stream::is_closed() const { return _fd < 0; }
+
+class TLSStream : public Stream {
+public:
+  using super_type = Stream;
+  virtual ssize_t read(swoc::MemSpan<char> span) override;
+  virtual ssize_t write(swoc::TextView data) override;
+  ~TLSStream() override {
+    if (_ssl)
+      SSL_free(_ssl);
+  }
+
+  void close() override;
+  swoc::Errata accept() override;
+  swoc::Errata connect() override;
+  static swoc::Errata init();
+  static swoc::file::path certificate_file;
+  static swoc::file::path privatekey_file;
+
+protected:
+  SSL *_ssl = nullptr;
+  static SSL_CTX *server_ctx;
+  static SSL_CTX *client_ctx;
+};
+
+class ChunkCodex {
+public:
+  /// The callback when a chunk is decoded.
+  /// @param chunk Data for the chunk in the provided view.
+  /// @param offset The offset from the full chunk for @a chunk.
+  /// @param size The size of the full chunk.
+  /// Because the data provided might not contain the entire chunk, a chunk can
+  /// come back piecemeal in the callbacks. The @a offset and @a size specify
+  /// where in the actual chunk the particular piece in @a chunk is placed.
+  using ChunkCallback =
+      std::function<bool(swoc::TextView chunk, size_t offset, size_t size)>;
+  enum Result { CONTINUE, DONE, ERROR };
+
+  /** Parse @a data as chunked encoded.
+   *
+   * @param data Data to parse.
+   * @param cb Callback to receive decoded chunks.
+   * @return Parsing result.
+   *
+   * The parsing is designed to be restartable so that data can be passed
+   * directly from the socket to this object, without doing any gathering.
+   */
+  Result parse(swoc::TextView data, ChunkCallback const &cb);
+
+  /** Write @a data to @a fd using chunked encoding.
+   *
+   * @param fd Output file descriptor.
+   * @param data [in,out] Data to write.
+   * @param chunk_size Size of chunks.
+   * @return A pair of
+   *   - The number of bytes written from @a data (not including the chunk
+   * encoding).
+   *   - An error code, which will be 0 if all data was successfully written.
+   */
+  std::tuple<ssize_t, std::error_code>
+  transmit(Stream &stream, swoc::TextView data, size_t chunk_size = 4096);
+
+protected:
+  size_t _size = 0; ///< Size of the current chunking being decoded.
+  size_t _off = 0; ///< Number of bytes in the current chunk already sent to the callback.
+  /// Buffer to hold size text in case it falls across @c parse call boundaries.
+  swoc::LocalBufferWriter<16> _size_text;
+
+  /// Parsing state.
+  enum class State {
+    INIT, ///< Initial state, no parsing has occurred.
+    SIZE, ///< Parsing the chunk size.
+    CR,   ///< Expecting the size terminating CR
+    LF,   ///< Expecting the size terminating LF.
+    BODY, ///< Inside the chunk body.
+    POST_BODY_CR,
+    POST_BODY_LF,
+    FINAL ///< Terminating (size zero) chunk parsed.
+  } _state = State::INIT;
 };
 
 // YAML support utilities.

@@ -216,27 +216,32 @@ void do_error() { printf("Errors:\n"); }
 
 swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
   Info("Running transaction.");
-  swoc::Errata errata{txn._req.transmit(stream)};
+  swoc::Errata errata;
+  stream.write(txn._req, errata);
+
   if (errata.is_ok()) {
     HttpHeader rsp_hdr;
     swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
     Info("Reading response header.");
-    auto read_result{rsp_hdr.read_header(stream, w)};
+
+    auto read_result{stream.read_header(w)};
+
     if (read_result.is_ok()) {
       ssize_t body_offset{read_result};
       auto result{rsp_hdr.parse_response(TextView(w.data(), body_offset))};
+
       if (result.is_ok()) {
         if (rsp_hdr._status == 100) {
           Info("100-Continue response. Read another header.");
           rsp_hdr = HttpHeader{};
           w.clear();
-          auto read_result{rsp_hdr.read_header(stream, w)};
+          auto read_result{stream.read_header(w)};
+
           if (read_result.is_ok()) {
             body_offset = read_result;
-            auto result{
-                rsp_hdr.parse_response(TextView(w.data(), body_offset))};
-            if (result.is_ok()) {
-            } else {
+            auto result{rsp_hdr.parse_response(TextView(w.data(), body_offset))};
+
+            if (!result.is_ok()) {
               errata.error(R"(Failed to parse post 100 header.)");
               return errata;
             }
@@ -277,7 +282,8 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
         txn._rsp._content_size, txn._req._url); return errata;
         }
         */
-        errata = rsp_hdr.drain_body(stream, w.view().substr(body_offset));
+        errata = stream.drain_body(rsp_hdr, w.view().substr(body_offset));
+
         if (!errata.is_ok()) {
           do_error();
         }
