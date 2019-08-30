@@ -96,12 +96,12 @@ ssize_t Stream::write(swoc::TextView view) {
 
 ssize_t Stream::write(HttpHeader const &hdr, swoc::Errata errata) {
   // 1. header.serialize, write it out
-  // 2. transmit the body 
+  // 2. transmit the body
   swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-  swoc::Errata err; 
+  swoc::Errata err;
   ssize_t n;
 
-  err = hdr.serialize(w); 
+  err = hdr.serialize(w);
 
   if (err.is_ok()) {
     n = write(w.view());
@@ -120,7 +120,7 @@ ssize_t Stream::write(HttpHeader const &hdr, swoc::Errata errata) {
   return n;
 }
 
-swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) { 
+swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) {
   swoc::Rv<ssize_t> zret{-1};
 
   Info("Reading header.");
@@ -248,7 +248,7 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
 swoc::Errata Stream::write_body(HttpHeader const &hdr) {
   swoc::Errata errata;
   ssize_t n;
-  std::error_code ec; 
+  std::error_code ec;
 
   Info("Transmit {} byte body {}{}.", hdr._content_size,
        swoc::bwf::If(hdr._content_length_p, "[CL]"),
@@ -656,7 +656,7 @@ swoc::Errata HttpHeader::update_transfer_encoding() {
 }
 
 swoc::Errata HttpHeader::serialize(swoc::BufferWriter &w) const {
-  swoc::Errata errata; 
+  swoc::Errata errata;
 
   if (_status) {
     w.print("HTTP/{} {} {}{}", _http_version, _status, _reason, HTTP_EOL);
@@ -1031,13 +1031,12 @@ operator()(BufferWriter &w, const swoc::bwf::Spec &spec) const {
 
 namespace swoc {
   BufferWriter&
-  bwformat(BufferWriter& w,
-                bwf::Spec const& spec, HttpHeader const& h) {
-    w.write("Printing Headers:\n"sv);
+  bwformat(BufferWriter& w, bwf::Spec const& spec, HttpHeader const& h) {
+    w.write("Headers:\n"sv);
     for ( auto const& [ key, value ] : h._fields_rules._fields) {
-      w.print(R"(Key: "{}", Value: "{}")", key, value).write('\n');
+      w.print(R"(- "{}": "{}"\n)", key, value);
     }
-    w.write("(End Headers)"sv);
+    return w;
   }
 } // namespace swoc
 
