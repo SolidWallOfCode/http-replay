@@ -1,0 +1,36 @@
+extra:
+- &request
+  version: "1.1"
+  scheme: http
+  method: GET
+  url: "/"
+  headers:
+    fields:
+    - [ Host, example.one ]
+    - [ uuid, 1 ]
+- &response
+  status: 200
+  reason: OK
+  headers:
+    fields:
+    - [ content-length, 6128 ]
+    - [ uuid, 1 ]
+meta:
+  version: "1.0"
+  replay-server:
+    port: &server-port 9090
+    tls-port: 9443
+  remap:
+  - from: example.one
+    to: "example.one:*server-port"
+sessions:
+  - protocols: [ "tcp", "ipv6" ]
+    transactions:
+    - client-request:
+        <<: *request
+      proxy-request:
+        <<: *request
+      server-response:
+        <<: *response
+      proxy-response:
+        <<: *response
