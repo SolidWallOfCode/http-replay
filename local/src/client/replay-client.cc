@@ -505,11 +505,11 @@ void Engine::command_run() {
       rate_multiplier = (transaction_count * 1000000.0) /
                         (target * Session_List.back()->_start);
     }
+    std::cout << "Rate multiplier is " << rate_multiplier
+              << " Transaction count is " << transaction_count << " Time delta "
+              << Session_List.back()->_start << " first time " << offset_time
+              << "\n";
   }
-  std::cout << "Rate multiplier is " << rate_multiplier
-            << " Transaction count is " << transaction_count << " Time delta "
-            << Session_List.back()->_start << " first time " << offset_time
-            << "\n";
 
   if (repeat_arg.size() == 1) {
     repeat_count = atoi(repeat_arg[0].c_str());
