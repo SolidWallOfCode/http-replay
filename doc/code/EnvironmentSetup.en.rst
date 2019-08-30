@@ -12,7 +12,7 @@
    under the License.
 
 .. include:: ../common-defs.rst
-.. highlight:: cpp
+.. highlight:: text
 .. default-domain:: cpp
 
 .. _EnvironmentSetup:
@@ -22,60 +22,93 @@ Environment Setup
 *****************
 
 The environment used during testing consisted of one replay client, one replay server, one ATS
-instance, and one microDNS instance.
+instance, and one μDNS instance.
 
-The ATS instance was configured with, in ats/etc/trafficserver/ssl_multicert.config,
+The first item is to select a set of ports that will be used in the testing. These are
 
-``dest_ip=* ssl_cert_name=<pem> ssl_key_name=<key>``
+``<dns-port>``
+   The port on which μDNS will server DNS queries.
 
-Where ''<pem>'' and ''<key>'' refer to certificate and key pair that will be shared between ATS
-and the replay server. In ats/etc/trafficserver/remap.config,
+``<proxy-port>``
+   The port on which Traffic Server will service HTTP (plain text) requests.
 
-``regex_map http://(.*) http://$1:<http port>
-regex_map https://(.*) https://$1:<https port>``
+``<proxy-tls-port>``
+   The port on which Traffic Server will service HTTPS (TLS) and HTTP/2 requests.
 
-With the ports that the replay server will listen for requests on. The following were appended to
-ats/etc/trafficserver/records.config:
+``<server-port>``
+   The port on which the replay server will service HTTP (plain text) requests.
 
-``CONFIG proxy.config.ssl.server.cert.path STRING <cert folder>
-CONFIG proxy.config.ssl.server.private_key.path STRING <key folder>
-CONFIG proxy.config.http.server_ports STRING <http port> <http port>:ipv6 <https port>:proto=http:ssl
-CONFIG proxy.config.dns.nameservers STRING 127.0.0.1:<dns port>
-CONFIG proxy.config.dns.resolv_conf STRING NULL
-CONFIG proxy.config.url_remap.remap_required INT 0``
+``<server-tls-port>``
+   The port on which the replay server will server HTTPS (TLS) and HTTP/2 requests.
 
-Where ``<cert folder>`` and ``<key folder>`` refer the folders where the same key and certificate
-pair that the replay server will use are located, ''<http port>'' and ''<https port>'' refer to the
-ports that ATS will listen on (these will be passed to the replay client), and ''<dns port>'' refers
-to the port that microDNS will listen on.
+All of these are shared by at least two processes and therefore need to be set consistently.
 
-microDNS was configured with the following in a ``microdnsconf.json`` file:
+The ATS instance `SSL configuration file
+<https://docs.trafficserver.apache.org/en/8.0.x/admin-guide/files/ssl_multicert.config.en.html>`__
+was configured with ::
 
-``{
+   dest_ip=* ssl_cert_name=<pem> ssl_key_name=<key>
+
+Where ``<pem>`` and ``<key>`` refer to a public certificate and private key files that will be
+shared between ATS and the replay server. The `remap configuration file
+<https://docs.trafficserver.apache.org/en/8.0.x/admin-guide/files/remap.config.en.html>`__ was changed
+to contain the remap rules ::
+
+   regex_map http://(.*) http://$1:<server-port>
+   regex_map https://(.*) https://$1:<server-tls-port>
+
+This will remap requests to the proxy port to the replay server ports.
+
+The following ATS configuration variables need to be set
+
+`proxy.config.ssl.server.cert.path <https://docs.trafficserver.apache.org/en/9.0.x/admin-guide/files/records.config.en.html#proxy.config.ssl.server.cert.path>`__
+   The path to the folder containing the ``<pem>`` file.
+
+`proxy.config.ssl.server.private_key.path <https://docs.trafficserver.apache.org/en/9.0.x/admin-guide/files/records.config.en.html#proxy.config.ssl.server.private_key.path>`__
+   The path to the folder containing the ``<key>`` file.
+
+`proxy.config.dns.nameservers <https://docs.trafficserver.apache.org/en/9.0.x/admin-guide/files/records.config.en.html#proxy.config.dns.nameservers>`__
+   The address and port for the μDNS server, generally "127.0.0.1:<dns-port>".
+
+`proxy.config.dns.resolv_conf <https://docs.trafficserver.apache.org/en/9.0.x/admin-guide/files/records.config.en.html#proxy.config.dns.resolv_conf>`__
+   Set this to the literal string "NULL" to prevent Traffic Server from using the default system DNS resolvers.
+
+`proxy.config.http.server_ports <https://docs.trafficserver.apache.org/en/9.0.x/admin-guide/files/records.config.en.html#proxy-config-http-server-ports>`__
+   Set this to "<proxy-port> <proxy-tls-port>:ssl".
+
+μDNS was configured with the following in a ``microdnsconf.json`` file
+
+.. code-block:: json
+
+   {
       "mappings": [],
       "otherwise": ["127.0.0.1"]
-}``
+   }
 
-It was invoked with ``microdns 127.0.0.1 <dns port> microdnsconf.json``, with ``<dns port>``
-referencing the same port set up in the ATS configuration file.
+μDNS should be invoked with ::
 
-The HTTP Replay server was invoked with ``./replay-server run <test file> --listen 127.0.0.1:<http port> --cert <combined> --listen-https 127.0.0.1:<https port> --verbose``
+   microdns 127.0.0.1 <dns-port> microdnsconf.json
 
-Where ``<test file>`` is the JSON or YAML replay file, ``<http port>`` and ``<https port>`` reference
-the setup in remap.config, and ``<combined>`` references a concatenated version of the same
-certificate and key pair set up in records.config and ssl_multicert.config earlier.
+The HTTP Replay server was invoked with ::
+
+   replay-server run <test file> --listen 127.0.0.1:<proxy-port> --cert <combined> --listen-https 127.0.0.1:<proxy-tls-port> --verbose
+
+Where ``<test file>`` is the JSON or YAML replay file and ``<combined>`` references a concatenated
+version of the same certificate and key pair set up in records.config and ssl_multicert.config
+earlier.
 
 For both server and client, the verbose flag shows more detailed error messages, particularly with
 header validation.
 
-The HTTP Replay client was invoked with ``./replay-client run <test file> 127.0.0.1:<http port> 127.0.0.1:<https port> --verbose``
+The HTTP Replay client was invoked with ::
 
-Where ``<test file>`` is the same JSON or YAML replay file used by the server, ``<http port>``
-and ``<https port>`` reference the setup in records.config (the ports that ATS is listening on),
-and ``<combined>`` references a concatenated version of the same certificate and key pair set up
-in records.config and ssl_multicert.config earlier.
+   replay-client run <test file> 127.0.0.1:<proxy-port> 127.0.0.1:<proxy-tls-port> --verbose
 
-The "key" flag to the replay server does not refer to cryptographic keys, but instead to the
+Where ``<test file>`` is the same JSON or YAML replay file used by the server and ``<combined>``
+references a concatenated version of the same certificate and key pair set up in records.config and
+ssl_multicert.config earlier.
+
+The ``key`` flag to the replay server does not refer to cryptographic keys, but instead to the
 identifying flag in headers that the server uses to choose how to verify and respond to incoming
 requests. It is recommended to omit it from the command line invocation (it defaults to uuid).
 
