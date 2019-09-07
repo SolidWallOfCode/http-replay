@@ -4,7 +4,8 @@ from parts import *
 SetOptionDefault("LINKFLAGS", ['-Wl,--copy-dt-needed-entries', '-Wl,--as-needed'])
 SetOptionDefault("PACKAGE_ROOT", "/opt/oath/${PART_ROOT_NAME}/${PART_SHORT_VERSION}")
 SetOptionDefault("OATH_RPM_NAME", '${RPM_PREFIX}${PART_ROOT_NAME}${PART_SHORT_VERSION}')
-
+SetOptionDefault("INSTALL_LIB",  "#/lib")
+SetOptionDefault("INSTALL_INCLUDE",  "#/include")
 
 # mode = OPENSSL_USE_SYSTEM will have the part use the system version instead
 openssl_git=None
@@ -13,7 +14,7 @@ if "OPENSSL_USE_SYSTEM" not in DefaultEnvironment()["mode"]:
 
 Part("#lib/openssl.part",vcs_type=openssl_git, package_group="http-replay")
 Part("#lib/libyaml.part",vcs_type=VcsGit(server="github.com", repository="jbeder/yaml-cpp.git", tag="yaml-cpp-0.6.2"), package_group="http-replay")
-Part("swoc++/swoc++.part",vcs_type=VcsGit(server="github.com", repository="SolidWallOfCode/libswoc", tag="1.0.7"), package_group="http-replay")
+Part("swoc++/swoc++.part",vcs_type=VcsGit(server="github.com", repository="SolidWallOfCode/libswoc", tag="dev-1-0-8"), package_group="http-replay")
 Part(
     "jemalloc",
     "#lib/jemalloc.part",
