@@ -37,6 +37,7 @@ struct Ssn {
   std::string _path;
   unsigned _line_no = 0;
   uint64_t _start; ///< Start time in HR ticks.
+  TextView _client_sni;
   bool is_tls = false;
 };
 std::mutex LoadMutex;
@@ -115,6 +116,19 @@ swoc::Errata ClientReplayFileHandler::ssn_open(YAML::Node const &node) {
       for (auto const &n : proto_node) {
         if (TextView{n.Scalar()}.starts_with_nocase(TLS_PREFIX)) {
           _ssn->is_tls = true;
+          if (auto tls_node{node[YAML_SSN_TLS_KEY]}; tls_node) {
+            if (auto client_sni_node{tls_node[YAML_SSN_TLS_CLIENT_SNI_KEY]};
+                client_sni_node) {
+              if (client_sni_node.IsScalar()) {
+                _ssn->_client_sni =
+                    HttpHeader::localize(client_sni_node.Scalar().c_str());
+              } else {
+                errata.error(
+                    R"(Session at "{}":{} has a value for key "{}" that is not a scalar as required.)",
+                    _path, _ssn->_line_no, YAML_SSN_TLS_CLIENT_SNI_KEY);
+              }
+            }
+          }
           break;
         }
       }
@@ -239,7 +253,8 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
 
           if (read_result.is_ok()) {
             body_offset = read_result;
-            auto result{rsp_hdr.parse_response(TextView(w.data(), body_offset))};
+            auto result{
+                rsp_hdr.parse_response(TextView(w.data(), body_offset))};
 
             if (!result.is_ok()) {
               errata.error(R"(Failed to parse post 100 header.)");
@@ -252,16 +267,17 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
         }
         Info(R"(Status: "{}")", rsp_hdr._status);
         Info("{}", rsp_hdr);
-        if (rsp_hdr._status != txn._rsp._status && (rsp_hdr._status != 200 ||
-            txn._rsp._status != 304) && (rsp_hdr._status != 304 ||
-            txn._rsp._status != 200)) {
+        if (rsp_hdr._status != txn._rsp._status &&
+            (rsp_hdr._status != 200 || txn._rsp._status != 304) &&
+            (rsp_hdr._status != 304 || txn._rsp._status != 200)) {
           errata.error(R"(Invalid status expected {} got {}. url={}.)",
                        txn._rsp._status, rsp_hdr._status, txn._req._url);
           do_error();
           return errata;
         }
         if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
-          errata.error(R"(Response headers did not match expected response headers.)");
+          errata.error(
+              R"(Response headers did not match expected response headers.)");
           return errata;
         }
         Info("Reading response body offset={}.", w.view().substr(body_offset));
@@ -344,7 +360,7 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
   Info(R"(Starting session "{}":{}.)", ssn._path, ssn._line_no);
 
   if (ssn.is_tls) {
-    stream.reset(new TLSStream());
+    stream.reset(new TLSStream(ssn._client_sni));
     real_target = &target_https;
   } else {
     stream.reset(new Stream());

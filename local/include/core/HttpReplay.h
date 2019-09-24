@@ -51,6 +51,9 @@ static const std::string YAML_GLOBALS_KEY{"global-field-rules"};
 static const std::string YAML_SSN_KEY{"sessions"};
 static const std::string YAML_SSN_PROTOCOL_KEY{"protocol"};
 static const std::string YAML_SSN_START_KEY{"connection-time"};
+static const std::string YAML_SSN_TLS_KEY{"tls"};
+static const std::string YAML_SSN_TLS_CLIENT_SNI_KEY{"client-sni"};
+static const std::string YAML_SSN_TLS_PROXY_SNI_KEY{"proxy-sni"};
 static const std::string YAML_TXN_KEY{"transactions"};
 static const std::string YAML_CLIENT_REQ_KEY{"client-request"};
 static const std::string YAML_PROXY_REQ_KEY{"proxy-request"};
@@ -69,9 +72,9 @@ static const std::string YAML_CONTENT_DATA_KEY{"data"};
 static const std::string YAML_CONTENT_ENCODING_KEY{"encoding"};
 static const std::string YAML_CONTENT_TRANSFER_KEY{"transfer"};
 
-static const size_t YAML_RULE_NAME_KEY{0};
-static const size_t YAML_RULE_DATA_KEY{1};
-static const size_t YAML_RULE_TYPE_KEY{2};
+static constexpr size_t YAML_RULE_NAME_KEY{0};
+static constexpr size_t YAML_RULE_DATA_KEY{1};
+static constexpr size_t YAML_RULE_TYPE_KEY{2};
 
 static const std::string YAML_RULE_EQUALS{"equal"};
 static const std::string YAML_RULE_PRESENCE{"present"};
@@ -89,7 +92,8 @@ extern bool Verbose;
 class HttpHeader;
 
 namespace swoc {
-  BufferWriter& bwformat(BufferWriter& w, bwf::Spec const& spec, HttpHeader const& h);
+BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
+                       HttpHeader const &h);
 }
 
 struct Hash {
@@ -97,20 +101,25 @@ struct Hash {
     return swoc::Hash64FNV1a{}.hash_immediate(
         swoc::transform_view_of(&tolower, view));
   }
-  bool operator()(swoc::TextView lhs, swoc::TextView rhs) const {
+  bool operator()(swoc::TextView const &lhs, swoc::TextView const &rhs) const {
     return 0 == strcasecmp(lhs, rhs);
   }
 };
 
 class RuleCheck {
   /// References the make_* functions below.
-  using RuleFunction = std::function<std::shared_ptr<RuleCheck>(swoc::TextView, swoc::TextView)>;
-  using RuleOptions = std::unordered_map<swoc::TextView, RuleFunction, Hash, Hash>;
+  using RuleFunction =
+      std::function<std::shared_ptr<RuleCheck>(swoc::TextView, swoc::TextView)>;
+  using RuleOptions =
+      std::unordered_map<swoc::TextView, RuleFunction, Hash, Hash>;
 
-  static RuleOptions options; ///< Returns function to construct a RuleCheck child class for a given rule type ("equals", "presence", or "absence")
+  static RuleOptions
+      options; ///< Returns function to construct a RuleCheck child class for a
+               ///< given rule type ("equals", "presence", or "absence")
 
 protected:
-  swoc::TextView _name; ///< All rules have a name of the field that needs to be checked
+  swoc::TextView
+      _name; ///< All rules have a name of the field that needs to be checked
 
 public:
   virtual ~RuleCheck() {}
@@ -122,40 +131,60 @@ public:
 
   /** Generate @a RuleCheck with @a node with factory pattern.
    *
-   * @param node YAML Array node with (in order) the name of the field, data for the field (null if not necessary), and rule for the field (equals, absence, or presence)
-   * @param name TextView holding the name of the field (redundant with above so that localization is not performed twice when making TextViews)
-   * @return A pointer to the RuleCheck instance generated, holding a key (and potentially value) TextView for the rule to compare inputs to
+   * @param node YAML Array node with (in order) the name of the field, data for
+   * the field (null if not necessary), and rule for the field (equals, absence,
+   * or presence)
+   * @param name TextView holding the name of the field (redundant with above so
+   * that localization is not performed twice when making TextViews)
+   * @return A pointer to the RuleCheck instance generated, holding a key (and
+   * potentially value) TextView for the rule to compare inputs to
    */
-  static std::shared_ptr<RuleCheck> find(const YAML::Node &node, swoc::TextView name);
+  static std::shared_ptr<RuleCheck> find(const YAML::Node &node,
+                                         swoc::TextView name);
 
-  /** Generate @a EqualityCheck, invoked by the factory function when the "equals" flag is present.
+  /** Generate @a EqualityCheck, invoked by the factory function when the
+   * "equals" flag is present.
    *
    * @param node TextView holding the name of the target field
-   * @param name TextView holding the associated value with the target field, that is used with strcasecmp comparisons
-   * @return A pointer to the EqualityCheck instance generated, holding key and value TextViews for the rule to compare inputs to
+   * @param name TextView holding the associated value with the target field,
+   * that is used with strcasecmp comparisons
+   * @return A pointer to the EqualityCheck instance generated, holding key and
+   * value TextViews for the rule to compare inputs to
    */
-  static std::shared_ptr<RuleCheck> make_equality(swoc::TextView name, swoc::TextView value);
+  static std::shared_ptr<RuleCheck> make_equality(swoc::TextView name,
+                                                  swoc::TextView value);
 
-  /** Generate @a PresenceCheck, invoked by the factory function when the "absence" flag is present.
+  /** Generate @a PresenceCheck, invoked by the factory function when the
+   * "absence" flag is present.
    *
    * @param name TextView holding the name of the target field
-   * @param value TextView (unused) in order to have the same signature as make_equality
-   * @return A pointer to the Presence instance generated, holding a name TextView for the rule to compare inputs to
+   * @param value TextView (unused) in order to have the same signature as
+   * make_equality
+   * @return A pointer to the Presence instance generated, holding a name
+   * TextView for the rule to compare inputs to
    */
-  static std::shared_ptr<RuleCheck> make_presence(swoc::TextView name, swoc::TextView value);
+  static std::shared_ptr<RuleCheck> make_presence(swoc::TextView name,
+                                                  swoc::TextView value);
 
-  /** Generate @a AbsenceCheck, invoked by the factory function when the "absence" flag is present.
+  /** Generate @a AbsenceCheck, invoked by the factory function when the
+   * "absence" flag is present.
    *
    * @param name TextView holding the name of the target field
-   * @param value TextView (unused) in order to have the same signature as make_equality
-   * @return A pointer to the AbsenceCheck instance generated, holding a name TextView for the rule to compare inputs to
+   * @param value TextView (unused) in order to have the same signature as
+   * make_equality
+   * @return A pointer to the AbsenceCheck instance generated, holding a name
+   * TextView for the rule to compare inputs to
    */
-  static std::shared_ptr<RuleCheck> make_absence(swoc::TextView name, swoc::TextView value);
+  static std::shared_ptr<RuleCheck> make_absence(swoc::TextView name,
+                                                 swoc::TextView value);
 
-  /** Pure virtual function to test whether the input name and value fulfill the rules for the test
+  /** Pure virtual function to test whether the input name and value fulfill the
+   * rules for the test
    *
-   * @param name TextView holding the name of the target field (null if not found)
-   * @param value TextView holding the value of the target field (null if not found)
+   * @param name TextView holding the name of the target field (null if not
+   * found)
+   * @param value TextView holding the value of the target field (null if not
+   * found)
    * @return Whether the check was successful or not
    */
   virtual bool test(swoc::TextView name, swoc::TextView value) const = 0;
@@ -170,14 +199,18 @@ public:
   /** Construct @a EqualityCheck with a given name and value.
    *
    * @param name TextView holding the name of the target field
-   * @param value TextView holding the associated value with the target field, that is used with strcasecmp comparisons
+   * @param value TextView holding the associated value with the target field,
+   * that is used with strcasecmp comparisons
    */
   EqualityCheck(swoc::TextView name, swoc::TextView value);
 
-  /** Test whether the name and value both match the expected name and value. Reports errors in verbose mode.
+  /** Test whether the name and value both match the expected name and value.
+   * Reports errors in verbose mode.
    *
-   * @param name TextView holding the name of the target field (null if not found)
-   * @param value TextView holding the value of the target field (null if not found)
+   * @param name TextView holding the name of the target field (null if not
+   * found)
+   * @param value TextView holding the value of the target field (null if not
+   * found)
    * @return Whether the check was successful or not
    */
   virtual bool test(swoc::TextView name, swoc::TextView value) const override;
@@ -191,10 +224,13 @@ public:
    */
   PresenceCheck(swoc::TextView name);
 
-  /** Test whether the name matches the expected name. Reports errors in verbose mode.
+  /** Test whether the name matches the expected name. Reports errors in verbose
+   * mode.
    *
-   * @param name TextView holding the name of the target field (null if not found)
-   * @param value TextView (unused) holding the value of the target field (null if not found)
+   * @param name TextView holding the name of the target field (null if not
+   * found)
+   * @param value TextView (unused) holding the value of the target field (null
+   * if not found)
    * @return Whether the check was successful or not
    */
   virtual bool test(swoc::TextView name, swoc::TextView value) const override;
@@ -208,10 +244,13 @@ public:
    */
   AbsenceCheck(swoc::TextView name);
 
-  /** Test whether the name is null (does not match the expected name). Reports errors in verbose mode.
+  /** Test whether the name is null (does not match the expected name). Reports
+   * errors in verbose mode.
    *
-   * @param name TextView holding the name of the target field (null if not found)
-   * @param value TextView (unused) holding the value of the target field (null if not found)
+   * @param name TextView holding the name of the target field (null if not
+   * found)
+   * @param value TextView (unused) holding the value of the target field (null
+   * if not found)
    * @return Whether the check was successful or not
    */
   virtual bool test(swoc::TextView name, swoc::TextView value) const override;
@@ -219,14 +258,17 @@ public:
 
 class HttpFields {
   /// std::unordered_map that returns RuleChecks for given field names
-  using Rules = std::unordered_map<swoc::TextView, std::shared_ptr<RuleCheck>, Hash, Hash>;
+  using Rules = std::unordered_map<swoc::TextView, std::shared_ptr<RuleCheck>,
+                                   Hash, Hash>;
   using Fields = std::unordered_map<swoc::TextView, std::string, Hash, Hash>;
 
 public:
-  Rules _rules; ///< Maps field names to functors.
+  Rules _rules;   ///< Maps field names to functors.
   Fields _fields; ///< Maps field names to values.
-  
-  /** Parse a node holding as an attribute an individual field array of rules. Used instead of parse_rules on nodes like global_rules_node. Calls parse_rules.
+
+  /** Parse a node holding as an attribute an individual field array of rules.
+   * Used instead of parse_rules on nodes like global_rules_node. Calls
+   * parse_rules.
    *
    * @param node YAML Node with Fields attribute holding array of rules
    * @return swoc::Errata holding any encountered errors
@@ -244,7 +286,7 @@ public:
 };
 
 struct VerificationConfig {
-  HttpFields* txn_rules;
+  HttpFields *txn_rules;
 };
 
 class HttpHeader {
@@ -331,7 +373,8 @@ public:
 
   std::string make_key();
 
-  /** Iterate over the rules and check that the fields are in line using the stored RuleChecks, and report any errors.
+  /** Iterate over the rules and check that the fields are in line using the
+   * stored RuleChecks, and report any errors.
    *
    * @param rules_ HeaderRules to iterate over, contains RuleCheck objects
    * @return Whether any rules were violated
@@ -404,6 +447,7 @@ protected:
    */
 public:
   static TextView localize(TextView text);
+  static TextView localize(char const *c_str);
 
 protected:
   /// Encoding for input text.
@@ -465,6 +509,8 @@ public:
   using super_type = Stream;
   virtual ssize_t read(swoc::MemSpan<char> span) override;
   virtual ssize_t write(swoc::TextView data) override;
+  TLSStream() = default;
+  TLSStream(swoc::TextView const &client_sni) : _client_sni(client_sni) {}
   ~TLSStream() override {
     if (_ssl)
       SSL_free(_ssl);
@@ -479,6 +525,7 @@ public:
 
 protected:
   SSL *_ssl = nullptr;
+  swoc::TextView _client_sni;
   static SSL_CTX *server_ctx;
   static SSL_CTX *client_ctx;
 };
@@ -522,7 +569,8 @@ public:
 
 protected:
   size_t _size = 0; ///< Size of the current chunking being decoded.
-  size_t _off = 0; ///< Number of bytes in the current chunk already sent to the callback.
+  size_t _off =
+      0; ///< Number of bytes in the current chunk already sent to the callback.
   /// Buffer to hold size text in case it falls across @c parse call boundaries.
   swoc::LocalBufferWriter<16> _size_text;
 
