@@ -4,51 +4,24 @@ from parts import *
 SetOptionDefault("LINKFLAGS", ['-Wl,--copy-dt-needed-entries', '-Wl,--as-needed'])
 SetOptionDefault("PACKAGE_ROOT", "/opt/oath/${PART_ROOT_NAME}/${PART_SHORT_VERSION}")
 SetOptionDefault("OATH_RPM_NAME", '${RPM_PREFIX}${PART_ROOT_NAME}${PART_SHORT_VERSION}')
-SetOptionDefault("INSTALL_LIB",  "#/lib")
-SetOptionDefault("INSTALL_INCLUDE",  "#/include")
+SetOptionDefault("INSTALL_LIB",  "#lib")
+SetOptionDefault("INSTALL_BIN",  "#bin")
+SetOptionDefault("INSTALL_INCLUDE",  "#include")
 
-# mode = OPENSSL_USE_SYSTEM will have the part use the system version instead
-openssl_git=None
-if "OPENSSL_USE_SYSTEM" not in DefaultEnvironment()["mode"]:
-    openssl_git=VcsGit(server="github.com", repository="openssl/openssl", protocol="https", tag="OpenSSL_1_1_1b")
+AddOption("--with-ssl",
+          dest='with_ssl',
+          nargs=1,
+          type='string',
+          action='store',
+          metavar='DIR',
+          default=None,
+          help='Optional path to custom build of OpenSSL'
+         )
 
-Part("#lib/openssl.part",vcs_type=openssl_git, package_group="http-replay")
+path = GetOption("with_ssl")
+Part("#lib/openssl.part", CUSTOM_PATH=path)
 Part("#lib/libyaml.part",vcs_type=VcsGit(server="github.com", repository="jbeder/yaml-cpp.git", tag="yaml-cpp-0.6.2"), package_group="http-replay")
 Part("swoc++/swoc++.part",vcs_type=VcsGit(server="github.com", repository="SolidWallOfCode/libswoc", tag="dev-1-0-8"), package_group="http-replay")
-Part(
-    "jemalloc",
-    "#lib/jemalloc.part",
-    package_group="http-replay",
-    vcs_type=VcsGit(server="github.com", repository="jemalloc/jemalloc.git", protocol="https", tag="5.1.0")
-)
-
-Part(
-    "jansson",
-    "#lib/jansson.part",
-    package_group="http-replay",
-    vcs_type=VcsGit(server="github.com", repository="akheron/jansson", protocol="https", tag="v2.12")
-)
-
-Part(
-    "libev",
-    "#lib/libev.part",
-    package_group="http-replay",
-    vcs_type=VcsGit(server="git.lighttpd.net", repository="libev", protocol="https", tag="rel-4.25")
-)
-
-Part(
-    "libevent",
-    "#lib/libevent.part",
-    package_group="http-replay",
-    vcs_type=VcsGit(server="github.com", repository="libevent/libevent", protocol="https", tag="release-2.1.8-stable")
-)
-
-Part(
-    "nghttp2",
-    "#lib/nghttp2.part",
-    package_group="http-replay",
-    vcs_type=VcsGit(server="github.com", repository="nghttp2/nghttp2", protocol="https", tag="v1.36.0")
-)
 
 Part("local/parts/http-replay.part", package_group="http-replay")
 Part("unit_tests/unit_tests.part")
