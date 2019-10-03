@@ -2,10 +2,9 @@ Import("*")
 PartName("core")
 
 env.DependsOn([
-    Component("swoc++"),
     Component("openssl"),
+    Component("swoc++"),
     Component("yaml-cpp"),
-    Component("nghttp2"),
 ])
 
 env.AppendUnique(

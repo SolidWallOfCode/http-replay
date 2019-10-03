@@ -6,19 +6,17 @@ include(GNUInstallDirs)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
-set(OPENSSL_ROOT_DIR /opt/oath/openssl/1.1.1)
 find_package(OpenSSL REQUIRED)
-find_package(swoc++ CONFIG REQUIRED)
-find_package(yaml-cpp CONFIG REQUIRED)
 find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)
 
 add_executable(replay-client
     replay-client.cc
 )
 
-target_link_libraries(replay-client PUBLIC replay-core swoc++::swoc++ yaml-cpp Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(replay-client PUBLIC replay-core ${CMAKE_INSTALL_LIBDIR}/libyaml-cpp.a Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
 
+install(TARGETS replay-client RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+message("client bindir ${CMAKE_INSTALL_BINDIR}")
 install(TARGETS replay-client
     EXPORT replay-client-config
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

@@ -168,8 +168,8 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
   }
 
   // If there's a status, and it indicates no body, we're done.
-  if (hdr._status && HttpHeader::STATUS_NO_CONTENT[hdr._status] && !hdr._content_length_p &&
-      !hdr._chunked_p) {
+  if (hdr._status && HttpHeader::STATUS_NO_CONTENT[hdr._status] &&
+      !hdr._content_length_p && !hdr._chunked_p) {
     return errata;
   }
 
@@ -191,9 +191,8 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
 
     auto result = codex.parse(initial, cb);
     while (result == ChunkCodex::CONTINUE && body_size < content_length) {
-      auto n{
-          read({buff.data(), std::min<size_t>(content_length - body_size,
-                                                     MAX_DRAIN_BUFFER_SIZE)})};
+      auto n{read({buff.data(), std::min<size_t>(content_length - body_size,
+                                                 MAX_DRAIN_BUFFER_SIZE)})};
       if (!is_closed()) {
         result = codex.parse(TextView(buff.data(), n), cb);
       } else {
@@ -221,7 +220,7 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
     body_size = initial.size();
     while (body_size < content_length) {
       ssize_t n = read({buff.data(), std::min(content_length - body_size,
-                                                     MAX_DRAIN_BUFFER_SIZE)});
+                                              MAX_DRAIN_BUFFER_SIZE)});
       if (is_closed()) {
         if (content_length == UNBOUNDED) {
           Info("Connection close on unbounded body");
@@ -254,7 +253,8 @@ swoc::Errata Stream::write_body(HttpHeader const &hdr) {
        swoc::bwf::If(hdr._content_length_p, "[CL]"),
        swoc::bwf::If(hdr._chunked_p, "[chunked]"));
 
-  if (hdr._content_size > 0 || (hdr._status && !HttpHeader::STATUS_NO_CONTENT[hdr._status])) {
+  if (hdr._content_size > 0 ||
+      (hdr._status && !HttpHeader::STATUS_NO_CONTENT[hdr._status])) {
     TextView content{hdr._content_data, hdr._content_size};
 
     if (hdr._chunked_p) {
@@ -264,7 +264,8 @@ swoc::Errata Stream::write_body(HttpHeader const &hdr) {
       n = write(content);
       ec = std::error_code(errno, std::system_category());
 
-      if (!hdr._content_length_p) { // no content-length, must close to signal end of body
+      if (!hdr._content_length_p) { // no content-length, must close to signal
+                                    // end of body
         Info("No CL, status {} - closing.", hdr._status);
         close();
       }
@@ -272,10 +273,12 @@ swoc::Errata Stream::write_body(HttpHeader const &hdr) {
 
     if (n != hdr._content_size) {
       errata.error(R"(Body write{} failed - {} of {} bytes written - {}.)",
-                   swoc::bwf::If(hdr._chunked_p, " [chunked]"), n, hdr._content_size, ec);
+                   swoc::bwf::If(hdr._chunked_p, " [chunked]"), n,
+                   hdr._content_size, ec);
     }
-  } else if (hdr._content_size == 0 && hdr._status && !HttpHeader::STATUS_NO_CONTENT[hdr._status] &&
-             !hdr._chunked_p && !hdr._content_length_p) {
+  } else if (hdr._content_size == 0 && hdr._status &&
+             !HttpHeader::STATUS_NO_CONTENT[hdr._status] && !hdr._chunked_p &&
+             !hdr._content_length_p) {
     // There's no body but the status expects one, so signal no body with EOS.
     Info("No CL or TE, status {} - closing.", hdr._status);
     close();
@@ -347,6 +350,9 @@ swoc::Errata TLSStream::connect() {
         _fd, client_ctx, ERR_lib_error_string(ERR_peek_last_error()));
   } else {
     SSL_set_fd(_ssl, _fd);
+    if (!_client_sni.empty()) {
+      SSL_set_tlsext_host_name(_ssl, _client_sni.data());
+    }
     int retval = SSL_connect(_ssl);
     if (retval <= 0) {
       errata.error(
@@ -524,11 +530,9 @@ ChunkCodex::transmit(Stream &stream, swoc::TextView data, size_t chunk_size) {
   return {total, NO_ERROR};
 };
 
-
-
 void HttpHeader::global_init() {
-  FIELD_CONTENT_LENGTH = localize("Content-Length");
-  FIELD_TRANSFER_ENCODING = localize("Transfer-Encoding");
+  FIELD_CONTENT_LENGTH = localize("Content-Length"_tv);
+  FIELD_TRANSFER_ENCODING = localize("Transfer-Encoding"_tv);
 
   STATUS_NO_CONTENT[100] = true;
   STATUS_NO_CONTENT[204] = true;
@@ -547,26 +551,31 @@ void RuleCheck::options_init() {
   options[swoc::TextView(YAML_RULE_ABSENCE)] = make_absence;
 }
 
-std::shared_ptr<RuleCheck> RuleCheck::find(const YAML::Node &node, swoc::TextView name) {
+std::shared_ptr<RuleCheck> RuleCheck::find(const YAML::Node &node,
+                                           swoc::TextView name) {
   auto flag_identifier = swoc::TextView(node[YAML_RULE_TYPE_KEY].Scalar());
   auto fn_iter = options.find(flag_identifier);
   if (fn_iter == options.end()) {
     Info(R"(Invalid Test: Key: "{}")", flag_identifier);
     return nullptr;
   }
-  return fn_iter->second(name, HttpHeader::localize(node[YAML_RULE_DATA_KEY].Scalar()));
+  return fn_iter->second(
+      name, HttpHeader::localize(node[YAML_RULE_DATA_KEY].Scalar()));
 }
 
-std::shared_ptr<RuleCheck> RuleCheck::make_equality(swoc::TextView name, swoc::TextView value) {
+std::shared_ptr<RuleCheck> RuleCheck::make_equality(swoc::TextView name,
+                                                    swoc::TextView value) {
   // Issue: Cannot use make_unique with polymorphism?
   return std::shared_ptr<RuleCheck>(new EqualityCheck(name, value));
 }
 
-std::shared_ptr<RuleCheck> RuleCheck::make_presence(swoc::TextView name, swoc::TextView value) {
+std::shared_ptr<RuleCheck> RuleCheck::make_presence(swoc::TextView name,
+                                                    swoc::TextView value) {
   return std::shared_ptr<RuleCheck>(new PresenceCheck(name));
 }
 
-std::shared_ptr<RuleCheck> RuleCheck::make_absence(swoc::TextView name, swoc::TextView value) {
+std::shared_ptr<RuleCheck> RuleCheck::make_absence(swoc::TextView name,
+                                                   swoc::TextView value) {
   return std::shared_ptr<RuleCheck>(new AbsenceCheck(name));
 }
 
@@ -575,19 +584,18 @@ EqualityCheck::EqualityCheck(swoc::TextView name, swoc::TextView value) {
   _value = value;
 }
 
-PresenceCheck::PresenceCheck(swoc::TextView name) {
-  _name = name;
-}
+PresenceCheck::PresenceCheck(swoc::TextView name) { _name = name; }
 
-AbsenceCheck::AbsenceCheck(swoc::TextView name) {
-  _name = name;
-}
+AbsenceCheck::AbsenceCheck(swoc::TextView name) { _name = name; }
 
 bool EqualityCheck::test(swoc::TextView name, swoc::TextView value) const {
   if (name.empty())
-    Info(R"(Equals Violation: Absent. Key: "{}", Correct Value: "{}")", _name, _value);
+    Info(R"(Equals Violation: Absent. Key: "{}", Correct Value: "{}")", _name,
+         _value);
   else if (strcasecmp(value, _value))
-    Info(R"(Equals Violation: Different. Key: "{}", Correct Value: "{}", Actual Value: "{}")", _name, _value, value);
+    Info(
+        R"(Equals Violation: Different. Key: "{}", Correct Value: "{}", Actual Value: "{}")",
+        _name, _value, value);
   else {
     Info(R"(Equals Success: Key: "{}", Value: "{}")", _name, _value);
     return true;
@@ -631,23 +639,23 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
     // Don't try chunked encoding later
     _content_size = 0;
     _content_length_p = true;
-  } else {
-    if (auto spot{_fields_rules._fields.find(FIELD_CONTENT_LENGTH)}; spot != _fields_rules._fields.end()) {
-      cl = swoc::svtou(spot->second);
-      if (_content_size != 0 && cl != _content_size) {
-        errata.info(R"(Conflicting sizes using "{}" value {} instead of {}.)",
-                    cl, _content_size);
-      }
-      _content_size = cl;
-      _content_length_p = true;
+  } else if (auto spot{_fields_rules._fields.find(FIELD_CONTENT_LENGTH)};
+             spot != _fields_rules._fields.end()) {
+    cl = swoc::svtou(spot->second);
+    if (_content_size != 0 && cl != _content_size) {
+      errata.info(R"(Conflicting sizes using "{}" value {} instead of {}.)", cl,
+                  _content_size);
     }
+    _content_size = cl;
+    _content_length_p = true;
   }
   return errata;
 }
 
 swoc::Errata HttpHeader::update_transfer_encoding() {
   _chunked_p = false;
-  if (auto spot{_fields_rules._fields.find(FIELD_TRANSFER_ENCODING)}; spot != _fields_rules._fields.end()) {
+  if (auto spot{_fields_rules._fields.find(FIELD_TRANSFER_ENCODING)};
+      spot != _fields_rules._fields.end()) {
     if (0 == strcasecmp("chunked", spot->second)) {
       _chunked_p = true;
     }
@@ -677,7 +685,7 @@ swoc::Errata HttpHeader::serialize(swoc::BufferWriter &w) const {
 swoc::Errata HttpFields::parse_fields_node(YAML::Node const &node) {
   swoc::Errata errata;
 
-  if (auto rules_node{node[YAML_FIELDS_KEY]} ; rules_node) {
+  if (auto rules_node{node[YAML_FIELDS_KEY]}; rules_node) {
     if (rules_node.IsSequence()) {
       if (rules_node.size() > 0) {
         auto result{this->parse_fields_rules(rules_node)};
@@ -694,13 +702,13 @@ swoc::Errata HttpFields::parse_fields_node(YAML::Node const &node) {
                   rules_node.Mark());
     }
   } else {
-    errata.info(R"(Node at {} is missing a fields node.)",
-                node.Mark());
+    errata.info(R"(Node at {} is missing a fields node.)", node.Mark());
   }
   return errata;
 }
 
-swoc::Errata HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node) {
+swoc::Errata
+HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node) {
   swoc::Errata errata;
 
   for (auto const &node : fields_rules_node) {
@@ -709,24 +717,22 @@ swoc::Errata HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node)
         TextView name{HttpHeader::localize(node[0].Scalar())};
         std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
         if (!tester) {
-          errata.error(
-              "Field rule at {} does not have a valid flag ({})",
-              node.Mark(), node[2].Scalar());
+          errata.error("Field rule at {} does not have a valid flag ({})",
+                       node.Mark(), node[2].Scalar());
         } else {
           _rules[name] = tester;
         }
       } else if (node.size() == 2) {
         TextView name{HttpHeader::localize(node[0].Scalar())};
-        TextView value{node[1].Scalar()};
-        _fields[name] = value;
+        _fields[name] = node[1].Scalar();
       } else {
-        errata.error(
-            "Field or rule node at {} is not a sequence of length 2 or 3 as required.",
-            node.Mark());
+        errata.error("Field or rule node at {} is not a sequence of length 2 "
+                     "or 3 as required.",
+                     node.Mark());
       }
     } else {
       errata.error("Field or rule at {} is not a sequence as required.",
-                  node.Mark());
+                   node.Mark());
     }
   }
   return errata;
@@ -755,8 +761,9 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
             YAML_HTTP_STATUS_KEY, text, status_node.Mark());
       }
     } else {
-      errata.error(R"("{}" value at {} must be an integer in the range [1..599].)",
-                   YAML_HTTP_STATUS_KEY, status_node.Mark());
+      errata.error(
+          R"("{}" value at {} must be an integer in the range [1..599].)",
+          YAML_HTTP_STATUS_KEY, status_node.Mark());
     }
   }
 
@@ -765,8 +772,8 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
     if (reason_node.IsScalar()) {
       _reason = this->localize(reason_node.Scalar());
     } else {
-      errata.error(R"("{}" value at {} must be a string.)", YAML_HTTP_REASON_KEY,
-                   reason_node.Mark());
+      errata.error(R"("{}" value at {} must be a string.)",
+                   YAML_HTTP_REASON_KEY, reason_node.Mark());
     }
   }
 
@@ -775,8 +782,8 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
     if (method_node.IsScalar()) {
       _method = this->localize(method_node.Scalar());
     } else {
-      errata.error(R"("{}" value at {} must be a string.)", YAML_HTTP_REASON_KEY,
-                   method_node.Mark());
+      errata.error(R"("{}" value at {} must be a string.)",
+                   YAML_HTTP_REASON_KEY, method_node.Mark());
     }
   }
 
@@ -880,7 +887,8 @@ bool HttpHeader::verify_headers(const HttpFields &rules_) const {
   // Remains false if no issue is observed
   // Setting true does not break loop because test() calls Info()
   bool issue_exists = false;
-  for (auto rule_iter = rules_._rules.cbegin(); rule_iter != rules_._rules.cend(); ++rule_iter) {
+  for (auto rule_iter = rules_._rules.cbegin();
+       rule_iter != rules_._rules.cend(); ++rule_iter) {
     // Hashing uses strcasecmp internally
     auto found_iter = _fields_rules._fields.find(rule_iter->first);
     if (found_iter == _fields_rules._fields.cend()) {
@@ -888,12 +896,17 @@ bool HttpHeader::verify_headers(const HttpFields &rules_) const {
         issue_exists = true;
       }
     } else {
-      if (!rule_iter->second->test(found_iter->first, swoc::TextView(found_iter->second))) {
+      if (!rule_iter->second->test(found_iter->first,
+                                   swoc::TextView(found_iter->second))) {
         issue_exists = true;
       }
     }
   }
   return issue_exists;
+}
+
+swoc::TextView HttpHeader::localize(char const *c_str) {
+  return self_type::localize(TextView{c_str, strlen(c_str) + 1});
 }
 
 swoc::TextView HttpHeader::localize(TextView text) {
@@ -1016,7 +1029,8 @@ operator()(BufferWriter &w, const swoc::bwf::Spec &spec) const {
   TextView name{spec._name};
   if (name.starts_with_nocase(FIELD_PREFIX)) {
     name.remove_prefix(FIELD_PREFIX.size());
-    if (auto spot{_hdr._fields_rules._fields.find(name)}; spot != _hdr._fields_rules._fields.end()) {
+    if (auto spot{_hdr._fields_rules._fields.find(name)};
+        spot != _hdr._fields_rules._fields.end()) {
       bwformat(w, spec, spot->second);
     } else {
       bwformat(w, spec, "*N/A*");
@@ -1030,14 +1044,14 @@ operator()(BufferWriter &w, const swoc::bwf::Spec &spec) const {
 }
 
 namespace swoc {
-  BufferWriter&
-  bwformat(BufferWriter& w, bwf::Spec const& spec, HttpHeader const& h) {
-    w.write("Headers:\n"sv);
-    for ( auto const& [ key, value ] : h._fields_rules._fields) {
-      w.print(R"(- "{}": "{}"\n)", key, value);
-    }
-    return w;
+BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
+                       HttpHeader const &h) {
+  w.write("Headers:\n"sv);
+  for (auto const &[key, value] : h._fields_rules._fields) {
+    w.print(R"(- "{}": "{}"{})", key, value, '\n');
   }
+  return w;
+}
 } // namespace swoc
 
 swoc::Errata Load_Replay_File(swoc::file::path const &path,
@@ -1067,8 +1081,8 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
             errata.note(global_fields_rules.parse_fields_node(globals_node));
           }
         } else {
-          errata.info(R"(No meta node ("{}") at {} in "{}".)",
-                      YAML_META_KEY, root.Mark(), path);
+          errata.info(R"(No meta node ("{}") at {} in "{}".)", YAML_META_KEY,
+                      root.Mark(), path);
         }
         handler.config = VerificationConfig{&global_fields_rules};
         if (root[YAML_SSN_KEY]) {
@@ -1076,7 +1090,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
           if (ssn_list_node.IsSequence()) {
             if (ssn_list_node.size() > 0) {
               for (auto const &ssn_node : ssn_list_node) {
-                //HeaderRules ssn_rules = global_rules;
+                // HeaderRules ssn_rules = global_rules;
                 auto result{handler.ssn_open(ssn_node)};
                 if (result.is_ok()) {
                   if (ssn_node[YAML_TXN_KEY]) {
@@ -1084,7 +1098,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                     if (txn_list_node.IsSequence()) {
                       if (txn_list_node.size() > 0) {
                         for (auto const &txn_node : txn_list_node) {
-                          //HeaderRules txn_rules = ssn_rules;
+                          // HeaderRules txn_rules = ssn_rules;
                           result = handler.txn_open(txn_node);
                           if (result.is_ok()) {
                             if (auto creq_node{txn_node[YAML_CLIENT_REQ_KEY]};
@@ -1092,7 +1106,8 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                               result.note(handler.client_request(creq_node));
                             }
                             if (auto preq_node{txn_node[YAML_PROXY_REQ_KEY]};
-                                preq_node) { // global_rules appears to be being copied
+                                preq_node) { // global_rules appears to be being
+                                             // copied
                               result.note(handler.proxy_request(preq_node));
                             }
                             if (auto ursp_node{txn_node[YAML_SERVER_RSP_KEY]};

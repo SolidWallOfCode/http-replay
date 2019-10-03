@@ -2,11 +2,10 @@ Import("*")
 PartName("replay-client")
 
 env.DependsOn([
-    Component("swoc++"),
     Component("openssl"),
+    Component("swoc++"),
     Component("yaml-cpp"),
     Component("http-replay.core"),
-    Component("nghttp2"),
 ])
 
 env.AppendUnique(

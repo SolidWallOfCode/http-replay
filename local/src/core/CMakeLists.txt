@@ -4,8 +4,6 @@ project(replay-core)
 set(CMAKE_CXX_STANDARD 17)
 include(GNUInstallDirs)
 
-#set(OPENSSL_ROOT_DIR /opt/oath/openssl/1.1.1)
-find_package(swoc++ CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 add_library(replay-core STATIC
@@ -14,7 +12,7 @@ add_library(replay-core STATIC
 )
 
 target_include_directories(replay-core PUBLIC)
-target_link_libraries(replay-core PUBLIC swoc++::swoc++)
+target_link_libraries(replay-core PUBLIC PkgConfig::libswoc++ PkgConfig::yaml-cpp)
 
 install(TARGETS replay-core ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(TARGETS replay-core
