@@ -207,14 +207,16 @@ void TF_Serve(std::thread *t) {
               errata = info._stream->drain_body(req_hdr,
                                                 w.view().substr(body_offset));
             }
-            Info("Validating request.");
-            Info("{}", req_hdr);
-            if (req_hdr.verify_headers(txn._req._fields_rules)) {
-              errata.error(
-                  R"(Request headers did not match expected request headers.)");
+            if (errata.is_ok()) {
+              Info("Validating request.");
+              Info("{}", req_hdr);
+              if (req_hdr.verify_headers(txn._req._fields_rules)) {
+                errata.error(
+                    R"(Request headers did not match expected request headers.)");
+              }
+              Info("Responding to request - status {}.", txn._rsp._status);
+              errata.note(info._stream->write(txn._rsp));
             }
-            Info("Responding to request - status {}.", txn._rsp._status);
-            info._stream->write(txn._rsp, errata);
           } else {
             errata.error(R"(Proxy request with key "{}" not found.)", key);
           }

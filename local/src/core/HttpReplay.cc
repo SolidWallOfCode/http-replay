@@ -94,14 +94,13 @@ ssize_t Stream::write(swoc::TextView view) {
   return ::write(_fd, view.data(), view.size());
 }
 
-ssize_t Stream::write(HttpHeader const &hdr, swoc::Errata errata) {
+swoc::Errata Stream::write(HttpHeader const &hdr) {
   // 1. header.serialize, write it out
   // 2. transmit the body
   swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-  swoc::Errata err;
   ssize_t n;
 
-  err = hdr.serialize(w);
+  swoc::Errata err = hdr.serialize(w);
 
   if (err.is_ok()) {
     n = write(w.view());
@@ -109,15 +108,11 @@ ssize_t Stream::write(HttpHeader const &hdr, swoc::Errata errata) {
     if (n == w.size()) {
       write_body(hdr);
     } else {
-      errata.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
+      err.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
                    w.size(), swoc::bwf::Errno{});
     }
-  } else {
-    errata.error(R"(Unable to write header.)");
-    errata.note(err);
-  }
-
-  return n;
+  } 
+  return err;
 }
 
 swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) {
