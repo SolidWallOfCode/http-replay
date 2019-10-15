@@ -230,8 +230,7 @@ void do_error() { printf("Errors:\n"); }
 
 swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
   Info("Running transaction.");
-  swoc::Errata errata;
-  stream.write(txn._req, errata);
+  swoc::Errata errata = stream.write(txn._req);
 
   if (errata.is_ok()) {
     HttpHeader rsp_hdr;

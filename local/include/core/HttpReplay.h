@@ -486,7 +486,7 @@ public:
   int fd() const;
   virtual ssize_t read(swoc::MemSpan<char> span);
   virtual ssize_t write(swoc::TextView data);
-  virtual ssize_t write(HttpHeader const &hdr, swoc::Errata errata);
+  virtual swoc::Errata write(HttpHeader const &hdr);
   virtual swoc::Errata write_body(HttpHeader const &hdr);
   virtual swoc::Errata accept();
   virtual swoc::Errata connect();
