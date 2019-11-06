@@ -46,10 +46,20 @@ std::list<Ssn *> Session_List;
 
 std::deque<swoc::IPEndpoint> Target, Target_Https;
 
-bool Proxy_Mode = false;
+/**
+ * @brief Whether the replay-client behaves according to client-request or
+ * proxy-request directives.
+ *
+ * This flag is toggled via the existence or non-existence of the --no-proxy
+ * argument. By default, replay-client will follow the client-request
+ * directives and assume that there is a proxy in place. But if there is
+ * --no-proxy, then because the server will expect requests and responses that
+ *  came from the proxy, the replay-client will oblige by using the
+ *  proxy-request directives.
+ */
+bool Use_Proxy_Request_Directives = false;
 
 class ClientReplayFileHandler : public ReplayFileHandler {
-  swoc::Errata file_open(swoc::file::path const &path);
   swoc::Errata ssn_open(YAML::Node const &node) override;
   swoc::Errata txn_open(YAML::Node const &node) override;
   swoc::Errata client_request(YAML::Node const &node) override;
@@ -62,7 +72,6 @@ class ClientReplayFileHandler : public ReplayFileHandler {
   void txn_reset();
   void ssn_reset();
 
-  std::string _path;
   Ssn *_ssn;
   Txn _txn;
 };
@@ -73,7 +82,7 @@ class ClientThreadInfo : public ThreadInfo {
 public:
   Ssn *_ssn = nullptr;
   bool data_ready() override {
-    return Shutdown_Flag ? true : this->_ssn != nullptr;
+    return Shutdown_Flag || this->_ssn != nullptr;
   }
 };
 
@@ -89,11 +98,6 @@ void TF_Client(std::thread *t);
 std::thread ClientThreadPool::make_thread(std::thread *t) {
   return std::thread(
       TF_Client, t); // move the temporary into the list element for permanence.
-}
-
-swoc::Errata ClientReplayFileHandler::file_open(swoc::file::path const &path) {
-  _path = path.string();
-  return {};
 }
 
 void ClientReplayFileHandler::ssn_reset() { _ssn = nullptr; }
@@ -166,13 +170,13 @@ swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
   Errata errata;
   if (!node[YAML_CLIENT_REQ_KEY]) {
     errata.error(
-        R"(Transaction node at {} does not have a client request [{}].)",
-        node.Mark(), YAML_CLIENT_REQ_KEY);
+        R"(Transaction node at "{}":{} does not have a client request [{}].)",
+        _path, node.Mark(), YAML_CLIENT_REQ_KEY);
   }
   if (!node[YAML_PROXY_RSP_KEY]) {
     errata.error(
-        R"(Transaction node at {} does not have a proxy response [{}].)",
-        node.Mark(), YAML_PROXY_RSP_KEY);
+        R"(Transaction node at "{}":{} does not have a proxy response [{}].)",
+        _path, node.Mark(), YAML_PROXY_RSP_KEY);
   }
   if (!errata.is_ok()) {
     return {std::move(errata)};
@@ -182,21 +186,23 @@ swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
 }
 
 swoc::Errata ClientReplayFileHandler::client_request(YAML::Node const &node) {
-  if (!Proxy_Mode) {
+  if (!Use_Proxy_Request_Directives) {
     return _txn._req.load(node);
   }
   return {};
 }
 
 swoc::Errata ClientReplayFileHandler::proxy_request(YAML::Node const &node) {
-  if (Proxy_Mode) {
+  if (Use_Proxy_Request_Directives) {
     return _txn._req.load(node);
   }
   return {};
 }
 
 swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
-  if (!Proxy_Mode) {
+  if (!Use_Proxy_Request_Directives) {
+    // We only expect proxy responses when we are behaving according to the
+    // client-request directives and there is a proxy.
     _txn._rsp._fields_rules = *config.txn_rules;
     return _txn._rsp.load(node);
   }
@@ -204,7 +210,9 @@ swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
 }
 
 swoc::Errata ClientReplayFileHandler::server_response(YAML::Node const &node) {
-  if (Proxy_Mode) {
+  if (Use_Proxy_Request_Directives) {
+    // If we are behaving like the proxy, then replay-client is talking directly with the server and should
+    // expect the server's responses.
     _txn._rsp._fields_rules = *config.txn_rules;
     return _txn._rsp.load(node);
   }
@@ -226,7 +234,9 @@ swoc::Errata ClientReplayFileHandler::ssn_close() {
   return {};
 }
 
-void do_error() { printf("Errors:\n"); }
+void print_error() {
+  fprintf(stderr, "Errors:\n");
+}
 
 swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
   Info("Running transaction.");
@@ -266,12 +276,10 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
         }
         Info(R"(Status: "{}")", rsp_hdr._status);
         Info("{}", rsp_hdr);
-        if (rsp_hdr._status != txn._rsp._status &&
-            (rsp_hdr._status != 200 || txn._rsp._status != 304) &&
-            (rsp_hdr._status != 304 || txn._rsp._status != 200)) {
+        if (rsp_hdr._status != txn._rsp._status) {
+          print_error();
           errata.error(R"(Invalid status expected {} got {}. url={}.)",
                        txn._rsp._status, rsp_hdr._status, txn._req._url);
-          do_error();
           return errata;
         }
         if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
@@ -279,7 +287,7 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
               R"(Response headers did not match expected response headers.)");
           return errata;
         }
-        Info("Reading response body offset={}.", w.view().substr(body_offset));
+        Info("Reading response body, offset={}.", body_offset);
         rsp_hdr.update_content_length(txn._req._method);
         rsp_hdr.update_transfer_encoding();
         /* Looks like missing plugins is causing issues with length mismatches
@@ -300,18 +308,19 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
         errata = stream.drain_body(rsp_hdr, w.view().substr(body_offset));
 
         if (!errata.is_ok()) {
-          do_error();
+          print_error();
+          errata.error(R"(Invalid read of response body: url={})", txn._req._url);
         }
       } else {
-        errata.error(R"(Invalid response. url={})", txn._req._url);
+        print_error();
+        errata.error(R"(Invalid parsing of response: url={})", txn._req._url);
         errata.note(result);
-        do_error();
       }
     } else {
-      errata.error(R"(Invalid response read url={}.)", txn._req._url);
+      print_error();
+      errata.error(R"(Invalid read of a response headers: url={}.)", txn._req._url);
       errata.note(read_result);
       std::cerr << errata;
-      do_error();
     }
   }
   return errata;
@@ -359,10 +368,10 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
   Info(R"(Starting session "{}":{}.)", ssn._path, ssn._line_no);
 
   if (ssn.is_tls) {
-    stream.reset(new TLSStream(ssn._client_sni));
+    stream = std::make_unique<TLSStream>(ssn._client_sni);
     real_target = &target_https;
   } else {
-    stream.reset(new Stream());
+    stream = std::make_unique<Stream>();
     real_target = &target;
   }
 
@@ -389,18 +398,18 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
 }
 
 void TF_Client(std::thread *t) {
-  ClientThreadInfo info;
-  info._thread = t;
+  ClientThreadInfo thread_info;
+  thread_info._thread = t;
   int target_index = 0;
   int target_https_index = 0;
 
   while (!Shutdown_Flag) {
     swoc::Errata errata;
-    info._ssn = nullptr;
-    Client_Thread_Pool.wait_for_work(&info);
+    thread_info._ssn = nullptr;
+    Client_Thread_Pool.wait_for_work(&thread_info);
 
-    if (info._ssn != nullptr) {
-      swoc::Errata result = Run_Session(*info._ssn, Target[target_index],
+    if (thread_info._ssn != nullptr) {
+      swoc::Errata result = Run_Session(*thread_info._ssn, Target[target_index],
                                         Target_Https[target_https_index]);
       if (!result.is_ok()) {
         std::cerr << result;
@@ -426,10 +435,10 @@ struct Engine {
 
   static constexpr swoc::TextView COMMAND_RUN{"run"};
   static constexpr swoc::TextView COMMAND_RUN_ARGS{
-      "Arguments:\n\t<dir>: Directory containing replay files.\n\t<upstream "
-      "http>: hostname and port for http requests. Can be a comma seprated "
-      "list\n\t<upstream https>: hostname and port for https requests.  Can be "
-      "a comma separated list "};
+      "Arguments:\n"
+      "\t<dir>: Directory containing replay files.\n"
+      "\t<upstream http>: hostname and port for http requests. Can be a comma seprated list\n"
+      "\t<upstream https>: hostname and port for https requests. Can be a comma separated list "};
   void command_run();
 
   /// Status code to return to the operating system.
@@ -455,8 +464,11 @@ void Engine::command_run() {
     return;
   }
 
-  if (arguments.get("--no-proxy")) {
-    Proxy_Mode = true;
+  if (arguments.get("no-proxy")) {
+    // If there is no proxy, then replay-client will take direction from
+    // proxy-request directives for its behavior. See the doxygen description
+    // of this variable for the reasons for this.
+    Use_Proxy_Request_Directives = true;
   }
 
   erratum = resolve_ips(args[1], Target);
@@ -504,6 +516,7 @@ void Engine::command_run() {
           std::max<size_t>(max_content_length, txn._req._content_size);
     }
   }
+  std::cout << "Parsed " << transaction_count << " transactions." << std::endl;
   HttpHeader::set_max_content_length(max_content_length);
 
   float rate_multiplier = 0.0;
@@ -542,7 +555,7 @@ void Engine::command_run() {
   for (int i = 0; i < repeat_count; i++) {
     uint64_t firsttime = GetUTimestamp();
     uint64_t lasttime = GetUTimestamp();
-    uint64_t nexttime;
+    uint64_t nexttime = 0;
     for (auto *ssn : Session_List) {
       uint64_t curtime = GetUTimestamp();
       nexttime = (uint64_t)(rate_multiplier * ssn->_start) + firsttime;
@@ -553,16 +566,16 @@ void Engine::command_run() {
         usleep(std::min(sleep_limit, nexttime - curtime));
       }
       lasttime = GetUTimestamp();
-      ClientThreadInfo *tinfo =
+      ClientThreadInfo *thread_info =
           dynamic_cast<ClientThreadInfo *>(Client_Thread_Pool.get_worker());
-      if (nullptr == tinfo) {
+      if (nullptr == thread_info) {
         std::cerr << "Failed to get worker thread\n";
       } else {
         // Only pointer to worker thread info.
         {
-          std::unique_lock<std::mutex> lock(tinfo->_mutex);
-          tinfo->_ssn = ssn;
-          tinfo->_cvar.notify_one();
+          std::unique_lock<std::mutex> lock(thread_info->_mutex);
+          thread_info->_ssn = ssn;
+          thread_info->_cvar.notify_one();
         }
       }
       ++n_ssn;
@@ -575,6 +588,7 @@ void Engine::command_run() {
 
   auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::high_resolution_clock::now() - start);
+  std::cout << "Done in " << delta.count() << " milliseconds." << std::endl;
   erratum.info("{} transactions in {} sessions (reuse {:.2f}) in {} ({:.3f} / "
                "millisecond).",
                n_txn, n_ssn, n_txn / static_cast<double>(n_ssn), delta,
@@ -582,6 +596,9 @@ void Engine::command_run() {
 };
 
 int main(int argc, const char *argv[]) {
+
+  block_sigpipe();
+
   Engine engine;
 
   engine.parser.add_option("--verbose", "", "Enable verbose output")

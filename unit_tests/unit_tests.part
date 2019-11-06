@@ -7,7 +7,7 @@ DependsOn([
     ])
 
 env.AppendUnique(
-    CCFLAGS=['-std=c++17'],
+    CCFLAGS=['-std=c++17', '-g'],
 )
 
 files = [

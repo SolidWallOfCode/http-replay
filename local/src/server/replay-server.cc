@@ -111,13 +111,13 @@ swoc::Errata ServerReplayFileHandler::txn_open(YAML::Node const &node) {
   Errata errata;
   if (!node[YAML_PROXY_REQ_KEY]) {
     errata.error(
-        R"(Transaction node at {} does not have a proxy request [{}].)",
-        node.Mark(), YAML_PROXY_REQ_KEY);
+        R"(Transaction node at "{}":{} does not have a proxy request [{}].)",
+        _path, node.Mark(), YAML_PROXY_REQ_KEY);
   }
   if (!node[YAML_SERVER_RSP_KEY]) {
     errata.error(
-        R"(Transaction node at {} does not have a server response [{}].)",
-        node.Mark(), YAML_SERVER_RSP_KEY);
+        R"(Transaction node at "{}":{} does not have a server response [{}].)",
+        _path, node.Mark(), YAML_SERVER_RSP_KEY);
   }
   if (!errata.is_ok()) {
     return std::move(errata);
@@ -142,18 +142,24 @@ swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
             HttpHeader::FIELD_CONTENT_LENGTH)};
         spot != _txn._rsp._fields_rules._fields.end()) {
       TextView src{spot->second}, parsed;
-      auto cl = swoc::svtou(src, &parsed);
+      auto content_length = swoc::svtou(src, &parsed);
       if (parsed.size() == src.size()) {
-        if (_txn._rsp._content_size != cl) {
-          errata.info(
-              R"(Overriding content size () with "{}" header value {} at {}.)",
-              _txn._rsp._content_size, HttpHeader::FIELD_CONTENT_LENGTH, cl,
-              node.Mark());
-          _txn._rsp._content_size = cl;
+        if (_txn._rsp._content_size != content_length) {
+          swoc::LocalBufferWriter<256> message;
+          message.print(
+              R"(Overriding node's content size {} with "{}"'s header value {} at "{}":{}.)",
+              _txn._rsp._content_size, HttpHeader::FIELD_CONTENT_LENGTH, content_length,
+              _path, node.Mark());
+          if (_txn._rsp._content_size == 0) {
+            Info(message.view());
+          } else {
+            errata.info(message.view());
+          }
+          _txn._rsp._content_size = content_length;
         }
       } else {
-        errata.info(R"(Invalid "{}" field at {} - not a positive integer.)",
-                    HttpHeader::FIELD_CONTENT_LENGTH, node.Mark());
+        errata.info(R"(Invalid "{}" field at "{}":{} - not a positive integer.)",
+                    HttpHeader::FIELD_CONTENT_LENGTH, _path, node.Mark());
       }
     }
   }
@@ -168,18 +174,18 @@ swoc::Errata ServerReplayFileHandler::txn_close() {
 }
 
 void TF_Serve(std::thread *t) {
-  ServerThreadInfo info;
-  info._thread = t;
+  ServerThreadInfo thread_info;
+  thread_info._thread = t;
   while (!Shutdown_Flag) {
     swoc::Errata errata;
 
-    Server_Thread_Pool.wait_for_work(&info);
+    Server_Thread_Pool.wait_for_work(&thread_info);
 
-    errata = info._stream->accept();
-    while (!info._stream->is_closed() && errata.is_ok()) {
+    errata = thread_info._stream->accept();
+    while (!thread_info._stream->is_closed() && errata.is_ok()) {
       HttpHeader req_hdr;
       swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-      auto read_result{info._stream->read_header(w)};
+      auto read_result{thread_info._stream->read_header(w)};
 
       if (read_result.is_ok()) {
         ssize_t body_offset = read_result;
@@ -197,14 +203,14 @@ void TF_Serve(std::thread *t) {
           auto spot{Transactions.find(key)};
 
           if (spot != Transactions.end()) {
-            [[maybe_unused]] auto const &[key, txn] = *spot;
+            [[maybe_unused]] auto &[key, txn] = *spot;
 
             req_hdr.update_content_length(req_hdr._method);
             req_hdr.update_transfer_encoding();
 
             if (req_hdr._content_length_p || req_hdr._chunked_p) {
               Info("Draining request body.");
-              errata = info._stream->drain_body(req_hdr,
+              errata = thread_info._stream->drain_body(req_hdr,
                                                 w.view().substr(body_offset));
             }
             if (errata.is_ok()) {
@@ -214,8 +220,13 @@ void TF_Serve(std::thread *t) {
                 errata.error(
                     R"(Request headers did not match expected request headers.)");
               }
+              // Responses to HEAD requests may have a non-zero Content-Length
+              // but will never have a body. update_content_length adjusts
+              // expectations so the body is not written for responses to such
+              // requests.
+              txn._rsp.update_content_length(req_hdr._method);
               Info("Responding to request - status {}.", txn._rsp._status);
-              errata.note(info._stream->write(txn._rsp));
+              errata.note(thread_info._stream->write(txn._rsp));
             }
           } else {
             errata.error(R"(Proxy request with key "{}" not found.)", key);
@@ -236,9 +247,9 @@ void TF_Serve(std::thread *t) {
 
     // cleanup and get ready for another stream.
     {
-      std::unique_lock<std::mutex> lock(info._mutex);
-      delete info._stream;
-      info._stream = nullptr;
+      std::unique_lock<std::mutex> lock(thread_info._mutex);
+      delete thread_info._stream;
+      thread_info._stream = nullptr;
     }
   }
 }
@@ -252,25 +263,25 @@ void TF_Accept(int socket_fd, bool do_tls) {
     int fd = accept4(socket_fd, &remote_addr.sa, &remote_addr_size, 0);
     if (fd >= 0) {
       if (do_tls) {
-        stream.reset(new TLSStream);
+        stream = std::make_unique<TLSStream>();
       } else {
-        stream.reset(new Stream);
+        stream = std::make_unique<Stream>();
       }
       errata = stream->open(fd);
       if (errata.is_ok()) {
         static const int ONE = 1;
         setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &ONE, sizeof(ONE));
 
-        ServerThreadInfo *tinfo =
+        ServerThreadInfo *thread_info =
             dynamic_cast<ServerThreadInfo *>(Server_Thread_Pool.get_worker());
-        if (nullptr == tinfo) {
+        if (nullptr == thread_info) {
           std::cerr << "Failed to get worker thread\n";
         } else {
           // Only pointer to worker thread info.
           {
-            std::unique_lock<std::mutex> lock(tinfo->_mutex);
-            tinfo->_stream = stream.release();
-            tinfo->_cvar.notify_one();
+            std::unique_lock<std::mutex> lock(thread_info->_mutex);
+            thread_info->_stream = stream.release();
+            thread_info->_cvar.notify_one();
           }
         }
       } else {
@@ -446,6 +457,9 @@ void Engine::command_run() {
 }
 
 int main(int argc, const char *argv[]) {
+
+  block_sigpipe();
+
   Engine engine;
 
   engine.parser.add_option("--verbose", "", "Enable verbose output")
@@ -462,7 +476,7 @@ int main(int argc, const char *argv[]) {
                   "Listen TLS address and port. Can be a comma separated list.",
                   "", 1, "")
       .add_option("--key", "-k", "Transaction key format", "", 1, "")
-      .add_option("--cert", "", "Specify certificate file", "", 1, "");
+      .add_option("--cert", "", "Specify TLS certificate file", "", 1, "");
 
   // parse the arguments
   engine.arguments = engine.parser.parse(argv);

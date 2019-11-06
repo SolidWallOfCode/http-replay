@@ -44,6 +44,13 @@
 \_*
 \.sconsign\.dblite
 
+.sconf_temp/
+activate_run.sh
+build-env/
+conanbuildinfo.txt
+config.log
+deactivate_run.sh
+
 dist/
 
 *.lock
