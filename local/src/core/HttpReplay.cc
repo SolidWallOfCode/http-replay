@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 #include <thread>
+#include <signal.h>
 
 #include "swoc/bwf_ex.h"
 #include "swoc/bwf_std.h"
@@ -60,9 +61,21 @@ namespace {
 }();
 }
 
+void block_sigpipe()
+{
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGPIPE);
+  if (pthread_sigmask(SIG_BLOCK, &set, NULL)) {
+    std::cerr << "Could not block SIGPIPE." << std::endl;
+  }
+}
+
 Stream::Stream() {}
 
 Stream::~Stream() { this->close(); }
+
+int Stream::get_fd() const { return _fd; }
 
 ssize_t Stream::read(swoc::MemSpan<char> span) {
   ssize_t n = ::read(_fd, span.data(), span.size());
@@ -74,15 +87,18 @@ ssize_t Stream::read(swoc::MemSpan<char> span) {
 
 ssize_t TLSStream::read(swoc::MemSpan<char> span) {
   ssize_t n = -1;
-  int ssl_error = 0;
 
+  errno = 0;
   n = SSL_read(this->_ssl, span.data(), span.size());
-  ssl_error = (n <= 0) ? SSL_get_error(_ssl, n) : 0;
+  const auto ssl_error = (n <= 0) ? SSL_get_error(_ssl, n) : 0;
 
   if ((n < 0 && ssl_error != SSL_ERROR_WANT_READ)) {
-    fprintf(stderr, "read failed: n=%zu ssl_err=%d %s\n", n,
-            SSL_get_error(_ssl, n),
-            ERR_lib_error_string(ERR_peek_last_error()));
+    fprintf(stderr, "read of %zu bytes failed: n=%zd ssl_err=%d %s, errno: %s\n",
+            span.size(),
+            n,
+            ssl_error,
+            ERR_reason_error_string(ssl_error),
+            strerror(errno));
     this->close();
   } else if (n == 0) {
     this->close();
@@ -111,7 +127,7 @@ swoc::Errata Stream::write(HttpHeader const &hdr) {
       err.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
                    w.size(), swoc::bwf::Errno{});
     }
-  } 
+  }
   return err;
 }
 
@@ -136,7 +152,6 @@ swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) {
         zret.errata().error(
             R"(Connection closed unexpectedly after {} bytes while waiting for header - {}.)",
             w.size(), swoc::bwf::Errno{});
-        printf("error\n");
       } else {
         zret = 0; // clean close between transactions.
       }
@@ -188,13 +203,11 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
     while (result == ChunkCodex::CONTINUE && body_size < content_length) {
       auto n{read({buff.data(), std::min<size_t>(content_length - body_size,
                                                  MAX_DRAIN_BUFFER_SIZE)})};
-      if (!is_closed()) {
-        result = codex.parse(TextView(buff.data(), n), cb);
-      } else {
+      if (is_closed()) {
         if (content_length == UNBOUNDED) {
           // Is this an error? It's chunked, so an actual close seems unexpected
           // - should have parsed the empty chunk.
-          Info("Connection closed on unbounded body.");
+          Info("Connection closed on unbounded chunked-encoded body.");
           result = ChunkCodex::DONE;
         } else {
           errata.error(
@@ -202,6 +215,8 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
               body_size, content_length, swoc::bwf::Errno{});
         }
         break;
+      } else {
+        result = codex.parse(TextView(buff.data(), n), cb);
       }
     }
     if (result != ChunkCodex::DONE ||
@@ -216,9 +231,12 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
     while (body_size < content_length) {
       ssize_t n = read({buff.data(), std::min(content_length - body_size,
                                               MAX_DRAIN_BUFFER_SIZE)});
+      // Do not update body_size with n yet because read may return a negative
+      // value on error conditions. If there is an error on read, then we close
+      // the connection. Thus we check is_closed() here.
       if (is_closed()) {
         if (content_length == UNBOUNDED) {
-          Info("Connection close on unbounded body");
+          Info("Connection closed on unbounded body");
         } else {
           errata.error(
               R"(Response underrun - received {} bytes  of content, expected {}, when file closed because {}.)",
@@ -250,7 +268,15 @@ swoc::Errata Stream::write_body(HttpHeader const &hdr) {
 
   if (hdr._content_size > 0 ||
       (hdr._status && !HttpHeader::STATUS_NO_CONTENT[hdr._status])) {
-    TextView content{hdr._content_data, hdr._content_size};
+    TextView content;
+    if (hdr._content_data) {
+      content = TextView{hdr._content_data, hdr._content_size};
+    } else {
+      // If hdr._content_data is null, then there was no explicit description
+      // of the body data via the data node. Instead we'll use our generated
+      // HttpHeader::_content.
+      content = TextView{HttpHeader::_content.data(), hdr._content_size};
+    }
 
     if (hdr._chunked_p) {
       ChunkCodex codex;
@@ -286,11 +312,13 @@ ssize_t TLSStream::write(swoc::TextView view) {
   int total_size = view.size();
   int num_written = 0;
   while (num_written < total_size) {
+    errno = 0;
     int n = SSL_write(this->_ssl, view.data() + num_written,
                       view.size() - num_written);
     if (n <= 0) {
-      fprintf(stderr, "write failed: %s\n",
-              ERR_lib_error_string(ERR_peek_last_error()));
+      fprintf(stderr, "write failed: %s, errno: %s\n",
+              ERR_reason_error_string(ERR_peek_last_error()),
+              strerror(errno));
       return n;
     } else {
       num_written += n;
@@ -317,14 +345,14 @@ swoc::Errata TLSStream::accept() {
   if (_ssl == nullptr) {
     errata.error(
         R"(Failed to create SSL server object fd={} server_ctx={} err={}.)",
-        _fd, server_ctx, ERR_lib_error_string(ERR_peek_last_error()));
+        get_fd(), server_ctx, ERR_reason_error_string(ERR_peek_last_error()));
   } else {
-    SSL_set_fd(_ssl, _fd);
+    SSL_set_fd(_ssl, get_fd());
     int retval = SSL_accept(_ssl);
     if (retval <= 0) {
       errata.error(
           R"(Failed SSL_accept {} {} {}.)", SSL_get_error(_ssl, retval),
-          ERR_lib_error_string(ERR_peek_last_error()), swoc::bwf::Errno{});
+          ERR_reason_error_string(ERR_peek_last_error()), swoc::bwf::Errno{});
     }
   }
   return errata;
@@ -342,9 +370,9 @@ swoc::Errata TLSStream::connect() {
   if (_ssl == nullptr) {
     errata.error(
         R"(Failed to create SSL client object fd={} client_ctx={} err={}.)",
-        _fd, client_ctx, ERR_lib_error_string(ERR_peek_last_error()));
+        get_fd(), client_ctx, ERR_reason_error_string(ERR_peek_last_error()));
   } else {
-    SSL_set_fd(_ssl, _fd);
+    SSL_set_fd(_ssl, get_fd());
     if (!_client_sni.empty()) {
       SSL_set_tlsext_host_name(_ssl, _client_sni.data());
     }
@@ -352,7 +380,7 @@ swoc::Errata TLSStream::connect() {
     if (retval <= 0) {
       errata.error(
           R"(Failed SSL_connect {} {} {}.)", SSL_get_error(_ssl, retval),
-          ERR_lib_error_string(ERR_peek_last_error()), swoc::bwf::Errno{});
+          ERR_reason_error_string(ERR_peek_last_error()), swoc::bwf::Errno{});
     }
   }
   return errata;
@@ -392,7 +420,7 @@ swoc::Errata TLSStream::init() {
                                       SSL_FILETYPE_PEM)) {
       errata.error(R"(Failed to load cert from "{}" - {}.)",
                    TLSStream::certificate_file,
-                   ERR_lib_error_string(ERR_peek_last_error()));
+                   ERR_reason_error_string(ERR_peek_last_error()));
     } else {
       if (!TLSStream::privatekey_file.empty()) {
         if (!SSL_CTX_use_PrivateKey_file(server_ctx,
@@ -400,7 +428,7 @@ swoc::Errata TLSStream::init() {
                                          SSL_FILETYPE_PEM)) {
           errata.error(R"(Failed to load private key from "{}" - {}.)",
                        TLSStream::privatekey_file,
-                       ERR_lib_error_string(ERR_peek_last_error()));
+                       ERR_reason_error_string(ERR_peek_last_error()));
         }
       } else {
         if (!SSL_CTX_use_PrivateKey_file(server_ctx,
@@ -408,7 +436,7 @@ swoc::Errata TLSStream::init() {
                                          SSL_FILETYPE_PEM)) {
           errata.error(R"(Failed to load private key from "{}" - {}.)",
                        TLSStream::certificate_file,
-                       ERR_lib_error_string(ERR_peek_last_error()));
+                       ERR_reason_error_string(ERR_peek_last_error()));
         }
       }
     }
@@ -416,7 +444,7 @@ swoc::Errata TLSStream::init() {
   client_ctx = SSL_CTX_new(TLS_client_method());
   if (!client_ctx) {
     errata.error(R"(Failed to create client_ctx - {}.)",
-                 ERR_lib_error_string(ERR_peek_last_error()));
+                 ERR_reason_error_string(ERR_peek_last_error()));
   }
   return errata;
 }
@@ -1076,8 +1104,8 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
             errata.note(global_fields_rules.parse_fields_node(globals_node));
           }
         } else {
-          errata.info(R"(No meta node ("{}") at {} in "{}".)", YAML_META_KEY,
-                      root.Mark(), path);
+          errata.info(R"(No meta node ("{}") at "{}":{}.)", YAML_META_KEY,
+                      path, root.Mark());
         }
         handler.config = VerificationConfig{&global_fields_rules};
         if (root[YAML_SSN_KEY]) {
@@ -1127,24 +1155,24 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                           txn_list_node.Mark(), ssn_node.Mark(), path);
                     }
                   } else {
-                    result.error(R"(Session at {} in "{}" has no "{}" key.)",
-                                 ssn_node.Mark(), path, YAML_TXN_KEY);
+                    result.error(R"(Session at "{}":{} has no "{}" key.)",
+                                 path, ssn_node.Mark(), YAML_TXN_KEY);
                   }
                   result.note(handler.ssn_close());
                 }
                 errata.note(result);
               }
             } else {
-              errata.info(R"(Session list at {} in "{}" is an empty list.)",
-                          ssn_list_node.Mark(), path);
+              errata.info(R"(Session list at "{}":{} is an empty list.)",
+                          path, ssn_list_node.Mark());
             }
           } else {
-            errata.error(R"("{}" value at {} in "{}" is not a sequence.)",
-                         YAML_SSN_KEY, ssn_list_node.Mark(), path);
+            errata.error(R"("{}" value at "{}":{} is not a sequence.)",
+                         YAML_SSN_KEY, path, ssn_list_node.Mark());
           }
         } else {
-          errata.error(R"(No sessions list ("{}") at {} in "{}".)",
-                       YAML_META_KEY, root.Mark(), path);
+          errata.error(R"(No sessions list ("{}") at "{}":{}.)",
+                       YAML_META_KEY, path, root.Mark());
         }
       }
     }
@@ -1239,7 +1267,7 @@ swoc::Errata resolve_ips(std::string arg,
                          std::deque<swoc::IPEndpoint> &target) {
   swoc::Errata errata;
   int offset = 0;
-  int new_offset;
+  int new_offset = 0;
   while (offset != std::string::npos) {
     new_offset = arg.find(',', offset);
     std::string name = arg.substr(offset, new_offset - offset);
@@ -1306,26 +1334,26 @@ swoc::Rv<swoc::IPEndpoint> Resolve_FQDN(swoc::TextView fqdn) {
 
 using namespace std::chrono_literals;
 
-void ThreadPool::wait_for_work(ThreadInfo *info) {
+void ThreadPool::wait_for_work(ThreadInfo *thread_info) {
   // ready to roll, add to the pool.
   {
     std::unique_lock<std::mutex> lock(_threadPoolMutex);
-    _threadPool.push_back(info);
+    _threadPool.push_back(thread_info);
     _threadPoolCvar.notify_all();
   }
 
   // wait for a notification there's a stream to process.
   {
-    std::unique_lock<std::mutex> lock(info->_mutex);
+    std::unique_lock<std::mutex> lock(thread_info->_mutex);
     bool condition_awoke = false;
-    while (!info->data_ready() && !condition_awoke) {
-      info->_cvar.wait_for(lock, 100ms);
+    while (!thread_info->data_ready() && !condition_awoke) {
+      thread_info->_cvar.wait_for(lock, 100ms);
     }
   }
 }
 
 ThreadInfo *ThreadPool::get_worker() {
-  ThreadInfo *tinfo = nullptr;
+  ThreadInfo *thread_info = nullptr;
   {
     std::unique_lock<std::mutex> lock(this->_threadPoolMutex);
     while (_threadPool.size() == 0) {
@@ -1346,10 +1374,10 @@ ThreadInfo *ThreadPool::get_worker() {
                                     // itself in the pool and signal.
       }
     }
-    tinfo = _threadPool.front();
+    thread_info = _threadPool.front();
     _threadPool.pop_front();
   }
-  return tinfo;
+  return thread_info;
 }
 
 void ThreadPool::join_threads() {

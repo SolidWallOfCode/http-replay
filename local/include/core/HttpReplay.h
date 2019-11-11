@@ -91,6 +91,18 @@ extern bool Verbose;
 
 class HttpHeader;
 
+/**
+ * @brief Configure the process to block SIGPIPE.
+ *
+ * Unless we block SIGPIPE, the process abruptly stops if SSL_write triggers
+ * the signal if the peer drops the connection before we write to the socket.
+ * This results in an abrupt termination of the process. SSL_write will return
+ * a -1 in these circumstances if the SIGPIPE doesn't interrupt it, so even
+ * with the signal blocked we will still report the issue and continue
+ * gracefully if SIGPIPE is raised under these circumstances.
+ */
+void block_sigpipe();
+
 namespace swoc {
 BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
                        HttpHeader const &h);
@@ -474,7 +486,7 @@ protected:
 };
 
 /** A stream reader.
- * This is essential a wrapper around a socket to support use of @c epoll on the
+ * This is essentially a wrapper around a socket to support use of @c epoll on the
  * socket. The goal is to enable a read operation that waits for data but
  * returns as soon as any data is available.
  */
@@ -498,6 +510,9 @@ public:
   virtual void close();
 
 protected:
+  int get_fd() const;
+
+private:
   int _fd = -1; ///< Socket.
 };
 
@@ -603,7 +618,10 @@ class ReplayFileHandler {
 public:
   VerificationConfig config;
 
-  virtual swoc::Errata file_open(swoc::file::path const &path) { return {}; }
+  virtual swoc::Errata file_open(swoc::file::path const &path) {
+    _path = path.string();
+    return {};
+  }
   virtual swoc::Errata file_close() { return {}; }
   virtual swoc::Errata ssn_open(YAML::Node const &node) { return {}; }
   virtual swoc::Errata ssn_close() { return {}; }
@@ -623,6 +641,12 @@ public:
   virtual swoc::Errata proxy_request(YAML::Node const &node) { return {}; }
   virtual swoc::Errata server_response(YAML::Node const &node) { return {}; }
   virtual swoc::Errata proxy_response(YAML::Node const &node) { return {}; }
+
+protected:
+  /**
+   * @brief The replay file associated with this handler.
+   */
+  std::string _path;
 };
 
 swoc::Errata Load_Replay_File(swoc::file::path const &path,
