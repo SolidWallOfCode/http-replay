@@ -112,12 +112,12 @@ swoc::Errata ServerReplayFileHandler::txn_open(YAML::Node const &node) {
   if (!node[YAML_PROXY_REQ_KEY]) {
     errata.error(
         R"(Transaction node at "{}":{} does not have a proxy request [{}].)",
-        _path, node.Mark(), YAML_PROXY_REQ_KEY);
+        _path, node.Mark().line, YAML_PROXY_REQ_KEY);
   }
   if (!node[YAML_SERVER_RSP_KEY]) {
     errata.error(
         R"(Transaction node at "{}":{} does not have a server response [{}].)",
-        _path, node.Mark(), YAML_SERVER_RSP_KEY);
+        _path, node.Mark().line, YAML_SERVER_RSP_KEY);
   }
   if (!errata.is_ok()) {
     return std::move(errata);
@@ -149,7 +149,7 @@ swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
           message.print(
               R"(Overriding node's content size {} with "{}"'s header value {} at "{}":{}.)",
               _txn._rsp._content_size, HttpHeader::FIELD_CONTENT_LENGTH, content_length,
-              _path, node.Mark());
+              _path, node.Mark().line);
           if (_txn._rsp._content_size == 0) {
             Info(message.view());
           } else {
@@ -158,8 +158,8 @@ swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
           _txn._rsp._content_size = content_length;
         }
       } else {
-        errata.info(R"(Invalid "{}" field at "{}":{} - not a positive integer.)",
-                    HttpHeader::FIELD_CONTENT_LENGTH, _path, node.Mark());
+        errata.info(R"(Invalid "{}" field at "{}":{}: not a positive integer.)",
+                    HttpHeader::FIELD_CONTENT_LENGTH, _path, node.Mark().line);
       }
     }
   }
@@ -299,7 +299,7 @@ swoc::Errata do_listen(swoc::IPEndpoint &server_addr, bool do_tls) {
     int ONE = 1;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &ONE, sizeof(int)) <
         0) {
-      errata.error(R"(Could not set reuseaddr on socket {} - {}.)", socket_fd,
+      errata.error(R"(Could not set reuseaddr on socket {}: {}.)", socket_fd,
                    swoc::bwf::Errno{});
     } else {
       int bind_result = bind(socket_fd, &server_addr.sa, server_addr.size());
@@ -310,16 +310,16 @@ swoc::Errata do_listen(swoc::IPEndpoint &server_addr, bool do_tls) {
           std::thread *runner = new std::thread{TF_Accept, socket_fd, do_tls};
           Listen_threads.push_back(runner);
         } else {
-          errata.error(R"(Could not isten to {} - {}.)", server_addr,
+          errata.error(R"(Could not isten to {}: {}.)", server_addr,
                        swoc::bwf::Errno{});
         }
       } else {
-        errata.error(R"(Could not bind to {} - {}.)", server_addr,
+        errata.error(R"(Could not bind to {}: {}.)", server_addr,
                      swoc::bwf::Errno{});
       }
     }
   } else {
-    errata.error(R"(Could not create socket - {}.)", swoc::bwf::Errno{});
+    errata.error(R"(Could not create socket: {}.)", swoc::bwf::Errno{});
   }
   if (!errata.is_ok() && socket_fd >= 0) {
     close(socket_fd);
@@ -377,7 +377,7 @@ void Engine::command_run() {
             TLSStream::certificate_file = cert_path;
           }
         } else {
-          errata.error(R"(Invalid certificate path "{}" - {}.)", cert_arg[0],
+          errata.error(R"(Invalid certificate path "{}": {}.)", cert_arg[0],
                        ec);
         }
       } else {

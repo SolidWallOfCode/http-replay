@@ -28,6 +28,7 @@
 #include <condition_variable>
 #include <deque>
 #include <memory>
+#include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <thread>
 #include <unistd.h>
@@ -91,8 +92,7 @@ extern bool Verbose;
 
 class HttpHeader;
 
-/**
- * @brief Configure the process to block SIGPIPE.
+/** Configure the process to block SIGPIPE.
  *
  * Unless we block SIGPIPE, the process abruptly stops if SSL_write triggers
  * the signal if the peer drops the connection before we write to the socket.
@@ -106,6 +106,21 @@ void block_sigpipe();
 namespace swoc {
 BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
                        HttpHeader const &h);
+
+namespace bwf {
+/** Format wrapper for @c errno.
+ * This stores a copy of the argument or @c errno if an argument isn't provided. The output
+ * is then formatted with the short, long, and numeric value of @c errno. If the format specifier
+ * is type 'd' then just the numeric value is printed.
+ */
+struct SSLError {
+  unsigned long _e;
+  explicit SSLError(int e = ERR_peek_last_error()) : _e(e) {}
+};
+} // namespace bwf
+
+BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
+                       bwf::SSLError const &error);
 }
 
 struct Hash {
@@ -643,10 +658,9 @@ public:
   virtual swoc::Errata proxy_response(YAML::Node const &node) { return {}; }
 
 protected:
-  /**
-   * @brief The replay file associated with this handler.
+  /** The replay file associated with this handler.
    */
-  std::string _path;
+  swoc::file::path _path;
 };
 
 swoc::Errata Load_Replay_File(swoc::file::path const &path,

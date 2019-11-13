@@ -34,7 +34,7 @@ struct Txn {
 
 struct Ssn {
   std::list<Txn> _txn;
-  std::string _path;
+  swoc::file::path _path;
   unsigned _line_no = 0;
   uint64_t _start; ///< Start time in HR ticks.
   TextView _client_sni;
@@ -46,8 +46,7 @@ std::list<Ssn *> Session_List;
 
 std::deque<swoc::IPEndpoint> Target, Target_Https;
 
-/**
- * @brief Whether the replay-client behaves according to client-request or
+/** Whether the replay-client behaves according to client-request or
  * proxy-request directives.
  *
  * This flag is toggled via the existence or non-existence of the --no-proxy
@@ -171,12 +170,12 @@ swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
   if (!node[YAML_CLIENT_REQ_KEY]) {
     errata.error(
         R"(Transaction node at "{}":{} does not have a client request [{}].)",
-        _path, node.Mark(), YAML_CLIENT_REQ_KEY);
+        _path, node.Mark().line, YAML_CLIENT_REQ_KEY);
   }
   if (!node[YAML_PROXY_RSP_KEY]) {
     errata.error(
         R"(Transaction node at "{}":{} does not have a proxy response [{}].)",
-        _path, node.Mark(), YAML_PROXY_RSP_KEY);
+        _path, node.Mark().line, YAML_PROXY_RSP_KEY);
   }
   if (!errata.is_ok()) {
     return {std::move(errata)};
@@ -337,7 +336,7 @@ swoc::Errata do_connect(Stream *stream, const swoc::IPEndpoint *real_target) {
     setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, (char *)&l, sizeof(l));
     if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &ONE, sizeof(int)) <
         0) {
-      errata.error(R"(Could not set reuseaddr on socket {} - {}.)", socket_fd,
+      errata.error(R"(Could not set reuseaddr on socket {}: {}.)", socket_fd,
                    swoc::bwf::Errno{});
     } else {
       errata = stream->open(socket_fd);
@@ -347,14 +346,14 @@ swoc::Errata do_connect(Stream *stream, const swoc::IPEndpoint *real_target) {
           setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &ONE, sizeof(ONE));
           errata = stream->connect();
         } else {
-          errata.error(R"(Failed to connect socket - {})", swoc::bwf::Errno{});
+          errata.error(R"(Failed to connect socket: {})", swoc::bwf::Errno{});
         }
       } else {
-        errata.error(R"(Failed to open stream - {})", swoc::bwf::Errno{});
+        errata.error(R"(Failed to open stream: {})", swoc::bwf::Errno{});
       }
     }
   } else {
-    errata.error(R"(Failed to open socket - {})", swoc::bwf::Errno{});
+    errata.error(R"(Failed to open socket: {})", swoc::bwf::Errno{});
   }
   return errata;
 }

@@ -150,7 +150,7 @@ swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) {
     } else {
       if (w.size()) {
         zret.errata().error(
-            R"(Connection closed unexpectedly after {} bytes while waiting for header - {}.)",
+            R"(Connection closed unexpectedly after {} bytes while waiting for header: {}.)",
             w.size(), swoc::bwf::Errno{});
       } else {
         zret = 0; // clean close between transactions.
@@ -172,7 +172,7 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
   size_t content_length = hdr._content_length_p ? hdr._content_size : UNBOUNDED;
   if (content_length < initial.size()) {
     errata.error(
-        R"(Response overrun - received {} bytes of content, expected {}.)",
+        R"(Response overrun: received {} bytes of content, expected {}.)",
         initial.size(), content_length);
     return errata;
   }
@@ -211,7 +211,7 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
           result = ChunkCodex::DONE;
         } else {
           errata.error(
-              R"(Response underrun - received {} bytes of content, expected {}, when file closed because {}.)",
+              R"(Response underrun: received {} bytes of content, expected {}, when file closed because {}.)",
               body_size, content_length, swoc::bwf::Errno{});
         }
         break;
@@ -239,7 +239,7 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
           Info("Connection closed on unbounded body");
         } else {
           errata.error(
-              R"(Response underrun - received {} bytes  of content, expected {}, when file closed because {}.)",
+              R"(Response underrun: received {} bytes  of content, expected {}, when file closed because {}.)",
               body_size, content_length, swoc::bwf::Errno{});
         }
         break;
@@ -248,7 +248,7 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
     }
     if (body_size > content_length) {
       errata.error(
-          R"(Invalid response - expected {} fixed bytes, drained {} byts.)",
+          R"(Invalid response: expected {} fixed bytes, drained {} byts.)",
           content_length, body_size);
       return errata;
     }
@@ -301,7 +301,7 @@ swoc::Errata Stream::write_body(HttpHeader const &hdr) {
              !HttpHeader::STATUS_NO_CONTENT[hdr._status] && !hdr._chunked_p &&
              !hdr._content_length_p) {
     // There's no body but the status expects one, so signal no body with EOS.
-    Info("No CL or TE, status {} - closing.", hdr._status);
+    Info("No CL or TE, status {}: closing.", hdr._status);
     close();
   }
 
@@ -338,21 +338,22 @@ swoc::Errata Stream::accept() {
   swoc::Errata errata;
   return errata;
 }
-// Complate the TLS handshake
+
+// Complete the TLS handshake
 swoc::Errata TLSStream::accept() {
   swoc::Errata errata;
   _ssl = SSL_new(server_ctx);
   if (_ssl == nullptr) {
     errata.error(
         R"(Failed to create SSL server object fd={} server_ctx={} err={}.)",
-        get_fd(), server_ctx, ERR_reason_error_string(ERR_peek_last_error()));
+        get_fd(), server_ctx, swoc::bwf::SSLError{});
   } else {
     SSL_set_fd(_ssl, get_fd());
     int retval = SSL_accept(_ssl);
     if (retval <= 0) {
       errata.error(
-          R"(Failed SSL_accept {} {} {}.)", SSL_get_error(_ssl, retval),
-          ERR_reason_error_string(ERR_peek_last_error()), swoc::bwf::Errno{});
+          R"(Failed SSL_accept {}, {}.)",
+          swoc::bwf::SSLError{}, swoc::bwf::Errno{});
     }
   }
   return errata;
@@ -370,7 +371,7 @@ swoc::Errata TLSStream::connect() {
   if (_ssl == nullptr) {
     errata.error(
         R"(Failed to create SSL client object fd={} client_ctx={} err={}.)",
-        get_fd(), client_ctx, ERR_reason_error_string(ERR_peek_last_error()));
+        get_fd(), client_ctx, swoc::bwf::SSLError{});
   } else {
     SSL_set_fd(_ssl, get_fd());
     if (!_client_sni.empty()) {
@@ -379,8 +380,8 @@ swoc::Errata TLSStream::connect() {
     int retval = SSL_connect(_ssl);
     if (retval <= 0) {
       errata.error(
-          R"(Failed SSL_connect {} {} {}.)", SSL_get_error(_ssl, retval),
-          ERR_reason_error_string(ERR_peek_last_error()), swoc::bwf::Errno{});
+          R"(Failed SSL_connect {}, {}.)",
+          swoc::bwf::SSLError{}, swoc::bwf::Errno{});
     }
   }
   return errata;
@@ -418,33 +419,33 @@ swoc::Errata TLSStream::init() {
     if (!SSL_CTX_use_certificate_file(server_ctx,
                                       TLSStream::certificate_file.c_str(),
                                       SSL_FILETYPE_PEM)) {
-      errata.error(R"(Failed to load cert from "{}" - {}.)",
+      errata.error(R"(Failed to load cert from "{}": {}.)",
                    TLSStream::certificate_file,
-                   ERR_reason_error_string(ERR_peek_last_error()));
+                   swoc::bwf::SSLError{});
     } else {
       if (!TLSStream::privatekey_file.empty()) {
         if (!SSL_CTX_use_PrivateKey_file(server_ctx,
                                          TLSStream::privatekey_file.c_str(),
                                          SSL_FILETYPE_PEM)) {
-          errata.error(R"(Failed to load private key from "{}" - {}.)",
+          errata.error(R"(Failed to load private key from "{}": {}.)",
                        TLSStream::privatekey_file,
-                       ERR_reason_error_string(ERR_peek_last_error()));
+                       swoc::bwf::SSLError{});
         }
       } else {
         if (!SSL_CTX_use_PrivateKey_file(server_ctx,
                                          TLSStream::certificate_file.c_str(),
                                          SSL_FILETYPE_PEM)) {
-          errata.error(R"(Failed to load private key from "{}" - {}.)",
+          errata.error(R"(Failed to load private key from "{}": {}.)",
                        TLSStream::certificate_file,
-                       ERR_reason_error_string(ERR_peek_last_error()));
+                       swoc::bwf::SSLError{});
         }
       }
     }
   }
   client_ctx = SSL_CTX_new(TLS_client_method());
   if (!client_ctx) {
-    errata.error(R"(Failed to create client_ctx - {}.)",
-                 ERR_reason_error_string(ERR_peek_last_error()));
+    errata.error(R"(Failed to create client_ctx: {}.)",
+                 swoc::bwf::SSLError{});
   }
   return errata;
 }
@@ -694,7 +695,7 @@ swoc::Errata HttpHeader::serialize(swoc::BufferWriter &w) const {
   } else if (_method) {
     w.print("{} {} HTTP/{}{}", _method, _url, _http_version, HTTP_EOL);
   } else {
-    errata.error(R"(Unable to write header - no status nor method.)");
+    errata.error(R"(Unable to write header: no status nor method.)");
   }
 
   for (auto const &[name, value] : _fields_rules._fields) {
@@ -1075,6 +1076,41 @@ BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
   }
   return w;
 }
+
+BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
+                       bwf::SSLError const &error) {
+
+  // Hand rolled, might not be totally compliant everywhere, but probably close
+  // enough. The long string will be locally accurate. Clang requires the double
+  // braces.
+  static const std::array<std::string_view, 11> SHORT_NAME = {{
+    "SSL_ERROR_NONE: ",
+    "SSL_ERROR_SSL: ",
+    "SSL_ERROR_WANT_READ: ",
+    "SSL_ERROR_WANT_WRITE: ",
+    "SSL_ERROR_WANT_X509_LOOKUP: ",
+    "SSL_ERROR_SYSCALL: ",
+    "SSL_ERROR_ZERO_RETURN: ",
+    "SSL_ERROR_WANT_CONNECT: ",
+    "SSL_ERROR_WANT_ACCEPT: ",
+    "SSL_ERROR_WANT_ASYNC: ",
+    "SSL_ERROR_WANT_ASYNC_JOB: ",
+  }};
+
+  auto short_name = [](int n) { return 0 <= n && n < int(SHORT_NAME.size()) ? SHORT_NAME[n] : "Unknown: "sv; };
+  static const bwf::Format number_fmt{"[{}]"sv}; // numeric value format.
+  if (spec.has_numeric_type()) {                 // if numeric type, print just the numeric part.
+    w.print(number_fmt, error._e);
+  } else {
+    w.write(short_name(error._e));
+    w.write(ERR_reason_error_string(error._e));
+    if (spec._type != 's' && spec._type != 'S') {
+      w.write(' ');
+      w.print(number_fmt, error._e);
+    }
+  }
+  return w;
+}
 } // namespace swoc
 
 swoc::Errata Load_Replay_File(swoc::file::path const &path,
@@ -1105,7 +1141,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
           }
         } else {
           errata.info(R"(No meta node ("{}") at "{}":{}.)", YAML_META_KEY,
-                      path, root.Mark());
+                      path, root.Mark().line);
         }
         handler.config = VerificationConfig{&global_fields_rules};
         if (root[YAML_SSN_KEY]) {
@@ -1156,7 +1192,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                     }
                   } else {
                     result.error(R"(Session at "{}":{} has no "{}" key.)",
-                                 path, ssn_node.Mark(), YAML_TXN_KEY);
+                                 path, ssn_node.Mark().line, YAML_TXN_KEY);
                   }
                   result.note(handler.ssn_close());
                 }
@@ -1164,7 +1200,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
               }
             } else {
               errata.info(R"(Session list at "{}":{} is an empty list.)",
-                          path, ssn_list_node.Mark());
+                          path, ssn_list_node.Mark().line);
             }
           } else {
             errata.error(R"("{}" value at "{}":{} is not a sequence.)",
@@ -1172,7 +1208,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
           }
         } else {
           errata.error(R"(No sessions list ("{}") at "{}":{}.)",
-                       YAML_META_KEY, path, root.Mark());
+                       YAML_META_KEY, path, root.Mark().line);
         }
       }
     }
@@ -1193,7 +1229,7 @@ Load_Replay_Directory(swoc::file::path const &path,
 
   auto stat{swoc::file::status(path, ec)};
   if (ec) {
-    return Errata().error(R"(Invalid test directory "{}" - [{}])", path, ec);
+    return Errata().error(R"(Invalid test directory "{}": [{}])", path, ec);
   } else if (swoc::file::is_regular_file(stat)) {
     return loader(path);
   } else if (!swoc::file::is_dir(stat)) {
@@ -1239,7 +1275,7 @@ Load_Replay_Directory(swoc::file::path const &path,
       errata.error(R"(No replay files found in "{}".)", path);
     }
   } else {
-    errata.error(R"(Failed to access directory "{}" - {}.)", path,
+    errata.error(R"(Failed to access directory "{}": {}.)", path,
                  swoc::bwf::Errno{});
   }
   return errata;
@@ -1313,7 +1349,7 @@ swoc::Rv<swoc::IPEndpoint> Resolve_FQDN(swoc::TextView fqdn) {
             zret.result().port() = port;
             freeaddrinfo(addrs);
           } else {
-            zret.errata().error(R"(Failed to resolve "{}" - {}.)", host_str,
+            zret.errata().error(R"(Failed to resolve "{}": {}.)", host_str,
                                 swoc::bwf::Errno(result));
           }
         }
