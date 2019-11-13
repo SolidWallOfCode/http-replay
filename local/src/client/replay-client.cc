@@ -24,7 +24,6 @@ inline BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
 }
 } // namespace swoc
 
-using swoc::Errata;
 using swoc::TextView;
 
 struct Txn {
@@ -166,7 +165,7 @@ swoc::Errata ClientReplayFileHandler::ssn_open(YAML::Node const &node) {
 }
 
 swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
-  Errata errata;
+  swoc::Errata errata;
   if (!node[YAML_CLIENT_REQ_KEY]) {
     errata.error(
         R"(Transaction node at "{}":{} does not have a client request [{}].)",
@@ -178,7 +177,7 @@ swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
         _path, node.Mark().line, YAML_PROXY_RSP_KEY);
   }
   if (!errata.is_ok()) {
-    return {std::move(errata)};
+    return errata;
   }
   LoadMutex.lock();
   return {};
@@ -233,94 +232,93 @@ swoc::Errata ClientReplayFileHandler::ssn_close() {
   return {};
 }
 
-void print_error() {
-  fprintf(stderr, "Errors:\n");
-}
-
 swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
-  Info("Running transaction.");
-  swoc::Errata errata = stream.write(txn._req);
+  swoc::Errata errata;
+  errata.diag("Running transaction for url: {}", txn._req._url);
 
-  if (errata.is_ok()) {
-    HttpHeader rsp_hdr;
-    swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-    Info("Reading response header.");
+  auto&& [bytes_written, write_errata] = stream.write(txn._req);
+  errata.note(write_errata);
+  if (!write_errata.is_ok()) {
+    return errata;
+  }
+  errata.diag("Sent the request in {} bytes", bytes_written);
 
-    auto read_result{stream.read_header(w)};
+  errata.diag("Reading the response header.");
+  swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
+  auto&& [header_bytes_read, read_header_errata] = stream.read_header(w);
+  errata.note(read_header_errata);
 
-    if (read_result.is_ok()) {
-      ssize_t body_offset{read_result};
-      auto result{rsp_hdr.parse_response(TextView(w.data(), body_offset))};
+  if (!read_header_errata.is_ok()) {
+    errata.error(R"(Invalid read of a response headers: url={}.)", txn._req._url);
+    return errata;
+  }
 
-      if (result.is_ok()) {
-        if (rsp_hdr._status == 100) {
-          Info("100-Continue response. Read another header.");
-          rsp_hdr = HttpHeader{};
-          w.clear();
-          auto read_result{stream.read_header(w)};
+  auto body_offset = header_bytes_read;
+  HttpHeader rsp_hdr;
+  auto&& [parse_result, parse_errata] = rsp_hdr.parse_response(TextView(w.data(), body_offset));
+  errata.note(parse_errata);
 
-          if (read_result.is_ok()) {
-            body_offset = read_result;
-            auto result{
-                rsp_hdr.parse_response(TextView(w.data(), body_offset))};
+  if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
+    errata.error(R"(Invalid parsing of response: url={})", txn._req._url);
+    return errata;
+  }
 
-            if (!result.is_ok()) {
-              errata.error(R"(Failed to parse post 100 header.)");
-              return errata;
-            }
-          } else {
-            errata.error(R"(Failed to read post 100 header.)");
-            return errata;
-          }
-        }
-        Info(R"(Status: "{}")", rsp_hdr._status);
-        Info("{}", rsp_hdr);
-        if (rsp_hdr._status != txn._rsp._status) {
-          print_error();
-          errata.error(R"(Invalid status expected {} got {}. url={}.)",
-                       txn._rsp._status, rsp_hdr._status, txn._req._url);
-          return errata;
-        }
-        if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
-          errata.error(
-              R"(Response headers did not match expected response headers.)");
-          return errata;
-        }
-        Info("Reading response body, offset={}.", body_offset);
-        rsp_hdr.update_content_length(txn._req._method);
-        rsp_hdr.update_transfer_encoding();
-        /* Looks like missing plugins is causing issues with length mismatches
-         */
-        /*
-        if (txn._rsp._content_length_p != rsp_hdr._content_length_p) {
-          errata.error(R"(Content length specificaton mismatch: got {} ({})
-        expected {}({}) . url={})", rsp_hdr._content_length_p ? "length" :
-        "chunked", rsp_hdr._content_size, txn._rsp._content_length_p ? "length"
-        : "chunked" , txn._rsp._content_size, txn._req._url); return errata;
-        }
-        if (txn._rsp._content_length_p && txn._rsp._content_size !=
-        rsp_hdr._content_size) { errata.error(R"(Content length mismatch: got
-        {}, expected {}. url={})", rsp_hdr._content_size,
-        txn._rsp._content_size, txn._req._url); return errata;
-        }
-        */
-        errata = stream.drain_body(rsp_hdr, w.view().substr(body_offset));
+  if (rsp_hdr._status == 100) {
+    errata.diag("100-Continue response. Read another header.");
+    rsp_hdr = HttpHeader{};
+    w.clear();
+    auto&& [header_bytes_read, read_header_errata] = stream.read_header(w);
+    errata.note(read_header_errata);
 
-        if (!errata.is_ok()) {
-          print_error();
-          errata.error(R"(Invalid read of response body: url={})", txn._req._url);
-        }
-      } else {
-        print_error();
-        errata.error(R"(Invalid parsing of response: url={})", txn._req._url);
-        errata.note(result);
-      }
-    } else {
-      print_error();
-      errata.error(R"(Invalid read of a response headers: url={}.)", txn._req._url);
-      errata.note(read_result);
-      std::cerr << errata;
+    if (!read_header_errata.is_ok()) {
+      errata.error(R"(Failed to read post 100 header.)");
+      return errata;
     }
+    body_offset = header_bytes_read;
+    auto&& [parse_result, parse_errata] = rsp_hdr.parse_response(TextView(w.data(), body_offset));
+    errata.note(parse_errata);
+
+    if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
+      errata.error(R"(Failed to parse post 100 header.)");
+      return errata;
+    }
+  }
+
+  errata.diag(R"(Response status: {})", rsp_hdr._status);
+  errata.diag("{}", rsp_hdr);
+  if (rsp_hdr._status != txn._rsp._status) {
+    errata.error(R"(Unexpected status: expected {}, got {}. url={}.)",
+                 txn._rsp._status, rsp_hdr._status, txn._req._url);
+    return errata;
+  }
+  if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
+    errata.error(
+        R"(Response headers did not match expected response headers.)");
+    return errata;
+  }
+  errata.diag("Reading response body at offset: {}.", body_offset);
+  errata.note(rsp_hdr.update_content_length(txn._req._method));
+  errata.note(rsp_hdr.update_transfer_encoding());
+  /* Looks like missing plugins is causing issues with length mismatches
+   */
+  /*
+  if (txn._rsp._content_length_p != rsp_hdr._content_length_p) {
+    errata.error(R"(Content length specificaton mismatch: got {} ({})
+  expected {}({}) . url={})", rsp_hdr._content_length_p ? "length" :
+  "chunked", rsp_hdr._content_size, txn._rsp._content_length_p ? "length"
+  : "chunked" , txn._rsp._content_size, txn._req._url); return errata;
+  }
+  if (txn._rsp._content_length_p && txn._rsp._content_size !=
+  rsp_hdr._content_size) { errata.error(R"(Content length mismatch: got
+  {}, expected {}. url={})", rsp_hdr._content_size,
+  txn._rsp._content_size, txn._req._url); return errata;
+  }
+  */
+  auto&& [bytes_drained, drain_errata] = stream.drain_body(rsp_hdr, w.view().substr(body_offset));
+  errata.note(drain_errata);
+  if (!drain_errata.is_ok()) {
+    errata.error(R"(Invalid read of response body: url={})", txn._req._url);
+    return errata;
   }
   return errata;
 }
@@ -339,7 +337,7 @@ swoc::Errata do_connect(Stream *stream, const swoc::IPEndpoint *real_target) {
       errata.error(R"(Could not set reuseaddr on socket {}: {}.)", socket_fd,
                    swoc::bwf::Errno{});
     } else {
-      errata = stream->open(socket_fd);
+      errata = stream->set_fd(socket_fd);
       if (errata.is_ok()) {
         if (0 == connect(socket_fd, &real_target->sa, real_target->size())) {
           static const int ONE = 1;
@@ -364,36 +362,36 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
   std::unique_ptr<Stream> stream;
   const swoc::IPEndpoint *real_target;
 
-  Info(R"(Starting session "{}":{}.)", ssn._path, ssn._line_no);
+  errata.diag(R"(Starting session "{}":{}.)", ssn._path, ssn._line_no);
 
   if (ssn.is_tls) {
     stream = std::make_unique<TLSStream>(ssn._client_sni);
     real_target = &target_https;
+    errata.diag("Connecting via TLS.");
   } else {
     stream = std::make_unique<Stream>();
     real_target = &target;
+    errata.diag("Connecting via HTTP.");
   }
 
-  Info("Connecting.");
-  errata = do_connect(stream.get(), real_target);
+  errata.note(do_connect(stream.get(), real_target));
   if (errata.is_ok()) {
     for (auto const &txn : ssn._txn) {
       if (stream->is_closed()) {
-        errata = do_connect(stream.get(), real_target);
+        // For some reason the connection was closed with the previous
+        // transaction. Simply try to reconnect for this transaction.
+        errata.note(do_connect(stream.get(), real_target));
       }
-      if (errata.is_ok()) {
-        errata = Run_Transaction(*stream, txn);
-        if (!errata.is_ok()) {
-          errata.error(R"(Failed url={}.)", txn._req._url);
-          std::cerr << errata;
-        }
-      } else {
-        std::cerr << errata;
+      if (!errata.is_ok()) {
         break;
+      }
+      errata.note(Run_Transaction(*stream, txn));
+      if (!errata.is_ok()) {
+        errata.error(R"(Failed url={}.)", txn._req._url);
       }
     }
   }
-  return std::move(errata);
+  return errata;
 }
 
 void TF_Client(std::thread *t) {
@@ -410,9 +408,6 @@ void TF_Client(std::thread *t) {
     if (thread_info._ssn != nullptr) {
       swoc::Errata result = Run_Session(*thread_info._ssn, Target[target_index],
                                         Target_Https[target_https_index]);
-      if (!result.is_ok()) {
-        std::cerr << result;
-      }
       if (++target_index >= Target.size())
         target_index = 0;
       if (++target_https_index >= Target_Https.size())
@@ -442,8 +437,6 @@ struct Engine {
 
   /// Status code to return to the operating system.
   int status_code = 0;
-  /// Error reporting.
-  swoc::Errata erratum;
 };
 
 uint64_t GetUTimestamp() {
@@ -455,9 +448,10 @@ uint64_t GetUTimestamp() {
 void Engine::command_run() {
   auto args{arguments.get("run")};
   dirent **elements = nullptr;
+  swoc::Errata errata;
 
   if (args.size() < 3) {
-    erratum.error(R"(Not enough arguments for "{}" command.\n{})", COMMAND_RUN,
+    errata.error(R"(Not enough arguments for "{}" command.\n{})", COMMAND_RUN,
                   COMMAND_RUN_ARGS);
     status_code = 1;
     return;
@@ -470,28 +464,30 @@ void Engine::command_run() {
     Use_Proxy_Request_Directives = true;
   }
 
-  erratum = resolve_ips(args[1], Target);
-  if (!erratum.is_ok()) {
+  errata.note(resolve_ips(args[1], Target));
+  if (!errata.is_ok()) {
+    status_code = 1;
     return;
   }
-  erratum = resolve_ips(args[2], Target_Https);
-  if (!erratum.is_ok()) {
-    return;
-  }
-
-  Info(R"(Loading directory "{}".)", args[0]);
-  auto result =
-      Load_Replay_Directory(swoc::file::path{args[0]},
-                            [](swoc::file::path const &file) -> swoc::Errata {
-                              ClientReplayFileHandler handler;
-                              return Load_Replay_File(file, handler);
-                            },
-                            10);
-  if (!result.is_ok() && result.severity() != swoc::Severity::ERROR) {
+  errata.note(resolve_ips(args[2], Target_Https));
+  if (!errata.is_ok()) {
+    status_code = 1;
     return;
   }
 
-  Info(R"(Initialize TLS)");
+  errata.info(R"(Loading directory "{}".)", args[0]);
+  errata.note(Load_Replay_Directory(swoc::file::path{args[0]},
+              [](swoc::file::path const &file) -> swoc::Errata {
+                ClientReplayFileHandler handler;
+                return Load_Replay_File(file, handler);
+              },
+              10));
+  if (!errata.is_ok()) {
+    status_code = 1;
+    return;
+  }
+
+  errata.info(R"(Initializing TLS)");
   TLSStream::init();
 
   // Sort the Session_List and adjust the time offsets
@@ -515,7 +511,7 @@ void Engine::command_run() {
           std::max<size_t>(max_content_length, txn._req._content_size);
     }
   }
-  std::cout << "Parsed " << transaction_count << " transactions." << std::endl;
+  errata.info("Parsed {} transactions.", transaction_count);
   HttpHeader::set_max_content_length(max_content_length);
 
   float rate_multiplier = 0.0;
@@ -532,10 +528,8 @@ void Engine::command_run() {
       rate_multiplier = (transaction_count * 1000000.0) /
                         (target * Session_List.back()->_start);
     }
-    std::cout << "Rate multiplier is " << rate_multiplier
-              << " Transaction count is " << transaction_count << " Time delta "
-              << Session_List.back()->_start << " first time " << offset_time
-              << "\n";
+    errata.info("Rate multiplier: {}, transaction count: {}, time delta: {}, first time {}",
+        rate_multiplier, transaction_count, Session_List.back()->_start, offset_time);
   }
 
   if (repeat_arg.size() == 1) {
@@ -559,16 +553,13 @@ void Engine::command_run() {
       uint64_t curtime = GetUTimestamp();
       nexttime = (uint64_t)(rate_multiplier * ssn->_start) + firsttime;
       if (nexttime > curtime) {
-        // std::cout << "Sleep " << nexttime - curtime << " ms " << nexttime <<
-        // " " << curtime << " " << (uint64_t)(rate_multiplier*ssn->_start) +
-        // lasttime << "\n";
         usleep(std::min(sleep_limit, nexttime - curtime));
       }
       lasttime = GetUTimestamp();
       ClientThreadInfo *thread_info =
           dynamic_cast<ClientThreadInfo *>(Client_Thread_Pool.get_worker());
       if (nullptr == thread_info) {
-        std::cerr << "Failed to get worker thread\n";
+        errata.error("Failed to get worker thread");
       } else {
         // Only pointer to worker thread info.
         {
@@ -587,8 +578,7 @@ void Engine::command_run() {
 
   auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::high_resolution_clock::now() - start);
-  std::cout << "Done in " << delta.count() << " milliseconds." << std::endl;
-  erratum.info("{} transactions in {} sessions (reuse {:.2f}) in {} ({:.3f} / "
+  errata.info("{} transactions in {} sessions (reuse {:.2f}) in {} ({:.3f} / "
                "millisecond).",
                n_txn, n_ssn, n_txn / static_cast<double>(n_ssn), delta,
                n_txn / static_cast<double>(delta.count()));
@@ -600,7 +590,13 @@ int main(int argc, const char *argv[]) {
 
   Engine engine;
 
-  engine.parser.add_option("--verbose", "", "Enable verbose output")
+  engine.parser
+      .add_option("--verbose", "",
+          "Enable verbose output:"
+          "\n\terror: Only print errors."
+          "\n\twarn: Print warnings and errors."
+          "\n\tinfo: Print info messages in addition to warnings and errors. This is the default verbosity level."
+          "\n\tdiag: Print debug messages in addition to info, warnings, and errors,", "", 1, "info")
       .add_option("--version", "-V", "Print version string")
       .add_option("--help", "-h", "Print usage information");
 
@@ -619,17 +615,15 @@ int main(int argc, const char *argv[]) {
   // parse the arguments
   engine.arguments = engine.parser.parse(argv);
 
-  if (auto args{engine.arguments.get("verbose")}; args) {
-    Verbose = true;
+  std::string verbosity = "info";
+  if (const auto verbose_argument{engine.arguments.get("verbose")}; verbose_argument) {
+    verbosity = verbose_argument.value();
+  }
+  if (!configure_logging(verbosity)) {
+    std::cerr << "Unrecognized verbosity option: " << verbosity << std::endl;
+    return 1;
   }
 
   engine.arguments.invoke();
-
-  if (!engine.erratum.is_ok()) {
-    std::cerr << engine.erratum;
-  } else if (engine.erratum.count()) {
-    std::cout << engine.erratum;
-  }
-
   return engine.status_code;
 }

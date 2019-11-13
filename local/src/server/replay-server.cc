@@ -75,8 +75,6 @@ struct Engine {
 
   /// Status code to return to the operating system.
   int status_code = 0;
-  /// Error reporting.
-  swoc::Errata errata;
 };
 
 bool Shutdown_Flag = false;
@@ -145,20 +143,14 @@ swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
       auto content_length = swoc::svtou(src, &parsed);
       if (parsed.size() == src.size()) {
         if (_txn._rsp._content_size != content_length) {
-          swoc::LocalBufferWriter<256> message;
-          message.print(
+          errata.diag(
               R"(Overriding node's content size {} with "{}"'s header value {} at "{}":{}.)",
               _txn._rsp._content_size, HttpHeader::FIELD_CONTENT_LENGTH, content_length,
               _path, node.Mark().line);
-          if (_txn._rsp._content_size == 0) {
-            Info(message.view());
-          } else {
-            errata.info(message.view());
-          }
           _txn._rsp._content_size = content_length;
         }
       } else {
-        errata.info(R"(Invalid "{}" field at "{}":{}: not a positive integer.)",
+        errata.warn(R"(Invalid "{}" field at "{}":{}: not a positive integer.)",
                     HttpHeader::FIELD_CONTENT_LENGTH, _path, node.Mark().line);
       }
     }
@@ -185,64 +177,70 @@ void TF_Serve(std::thread *t) {
     while (!thread_info._stream->is_closed() && errata.is_ok()) {
       HttpHeader req_hdr;
       swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-      auto read_result{thread_info._stream->read_header(w)};
-
-      if (read_result.is_ok()) {
-        ssize_t body_offset = read_result;
-
-        if (0 == body_offset) {
-          break; // client closed between transactions, that's not an error.
-        }
-
-        auto result{
-            req_hdr.parse_request(swoc::TextView(w.data(), body_offset))};
-
-        if (result.is_ok()) {
-          Info("Handling request.");
-          auto key{req_hdr.make_key()};
-          auto spot{Transactions.find(key)};
-
-          if (spot != Transactions.end()) {
-            [[maybe_unused]] auto &[key, txn] = *spot;
-
-            req_hdr.update_content_length(req_hdr._method);
-            req_hdr.update_transfer_encoding();
-
-            if (req_hdr._content_length_p || req_hdr._chunked_p) {
-              Info("Draining request body.");
-              errata = thread_info._stream->drain_body(req_hdr,
-                                                w.view().substr(body_offset));
-            }
-            if (errata.is_ok()) {
-              Info("Validating request.");
-              Info("{}", req_hdr);
-              if (req_hdr.verify_headers(txn._req._fields_rules)) {
-                errata.error(
-                    R"(Request headers did not match expected request headers.)");
-              }
-              // Responses to HEAD requests may have a non-zero Content-Length
-              // but will never have a body. update_content_length adjusts
-              // expectations so the body is not written for responses to such
-              // requests.
-              txn._rsp.update_content_length(req_hdr._method);
-              Info("Responding to request - status {}.", txn._rsp._status);
-              errata.note(thread_info._stream->write(txn._rsp));
-            }
-          } else {
-            errata.error(R"(Proxy request with key "{}" not found.)", key);
-          }
-        } else {
-          errata.error(R"(Proxy request was malformed.)");
-          errata.note(result);
-        }
-      } else {
-        errata.note(read_result);
+      auto&& [header_bytes_read, read_header_errata] = thread_info._stream->read_header(w);
+      errata.note(read_header_errata);
+      if (!read_header_errata.is_ok()) {
+        errata.error("Could not read the header.");
         break;
       }
-    }
 
-    if (!errata.is_ok()) {
-      std::cerr << errata;
+      ssize_t body_offset = header_bytes_read;
+      if (body_offset == 0) {
+        break; // client closed between transactions, that's not an error.
+      }
+
+      const auto& received_data = swoc::TextView(w.data(), body_offset);
+      auto&& [parse_result, parse_errata] = req_hdr.parse_request(received_data);
+      errata.note(parse_errata);
+
+      if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
+        errata.error(R"(The received request was malformed.)");
+        errata.diag(R"(Received data: {}.)", received_data);
+        break;
+      }
+      errata.diag("Handling request with url: {}", req_hdr._url);
+      auto key{req_hdr.make_key()};
+      auto specified_response{Transactions.find(key)};
+
+      if (specified_response == Transactions.end()) {
+        errata.error(R"(Proxy request with key "{}" not found.)", key);
+        break;
+      }
+      [[maybe_unused]] auto &[unused_key, txn] = *specified_response;
+
+      errata.note(req_hdr.update_content_length(req_hdr._method));
+      errata.note(req_hdr.update_transfer_encoding());
+
+      if (req_hdr._content_length_p || req_hdr._chunked_p) {
+        errata.diag("Draining request body.");
+        auto&& [bytes_drained, drain_errata] = thread_info._stream->drain_body(req_hdr, w.view().substr(body_offset));
+        errata.note(drain_errata);
+
+        if (!errata.is_ok()) {
+          errata.error("Failed to drain the request body.");
+          break;
+        }
+      }
+      if (!errata.is_ok()) {
+        errata.error("Error generating a response to request with url: {}", req_hdr._url);
+        break;
+      }
+      errata.diag("Validating request with url: {}", req_hdr._url);
+      errata.diag("{}", req_hdr);
+      if (req_hdr.verify_headers(txn._req._fields_rules)) {
+        errata.error(
+            R"(Request headers did not match expected request headers.)");
+      }
+      // Responses to HEAD requests may have a non-zero Content-Length
+      // but will never have a body. update_content_length adjusts
+      // expectations so the body is not written for responses to such
+      // requests.
+      txn._rsp.update_content_length(req_hdr._method);
+      errata.diag("Responding to request {} with status {}.", req_hdr._url, txn._rsp._status);
+      auto&& [bytes_written, write_errata] = thread_info._stream->write(txn._rsp);
+      errata.note(write_errata);
+      errata.diag("Wrote {} bytes in response to request with url {} with response status {}",
+          bytes_written, req_hdr._url, txn._rsp._status);
     }
 
     // cleanup and get ready for another stream.
@@ -261,31 +259,32 @@ void TF_Accept(int socket_fd, bool do_tls) {
     swoc::IPEndpoint remote_addr;
     socklen_t remote_addr_size;
     int fd = accept4(socket_fd, &remote_addr.sa, &remote_addr_size, 0);
-    if (fd >= 0) {
-      if (do_tls) {
-        stream = std::make_unique<TLSStream>();
-      } else {
-        stream = std::make_unique<Stream>();
-      }
-      errata = stream->open(fd);
-      if (errata.is_ok()) {
-        static const int ONE = 1;
-        setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &ONE, sizeof(ONE));
+    if (fd < 0) {
+      errata.error("Failed to create a socket via accept4: {}", swoc::bwf::Errno{});
+      continue;
+    }
+    if (do_tls) {
+      stream = std::make_unique<TLSStream>();
+    } else {
+      stream = std::make_unique<Stream>();
+    }
+    errata.note(stream->set_fd(fd));
+    if (!errata.is_ok()) {
+      continue;
+    }
+    static const int ONE = 1;
+    setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &ONE, sizeof(ONE));
 
-        ServerThreadInfo *thread_info =
-            dynamic_cast<ServerThreadInfo *>(Server_Thread_Pool.get_worker());
-        if (nullptr == thread_info) {
-          std::cerr << "Failed to get worker thread\n";
-        } else {
-          // Only pointer to worker thread info.
-          {
-            std::unique_lock<std::mutex> lock(thread_info->_mutex);
-            thread_info->_stream = stream.release();
-            thread_info->_cvar.notify_one();
-          }
-        }
-      } else {
-        std::cerr << errata;
+    ServerThreadInfo *thread_info =
+        dynamic_cast<ServerThreadInfo *>(Server_Thread_Pool.get_worker());
+    if (nullptr == thread_info) {
+      errata.error("Failed to get worker thread");
+    } else {
+      // Only pointer to worker thread info.
+      {
+        std::unique_lock<std::mutex> lock(thread_info->_mutex);
+        thread_info->_stream = stream.release();
+        thread_info->_cvar.notify_one();
       }
     }
   }
@@ -306,7 +305,7 @@ swoc::Errata do_listen(swoc::IPEndpoint &server_addr, bool do_tls) {
       if (bind_result == 0) {
         int listen_result = listen(socket_fd, 16384);
         if (listen_result == 0) {
-          Info(R"(Listening at {})", server_addr);
+          errata.info(R"(Listening at {})", server_addr);
           std::thread *runner = new std::thread{TF_Accept, socket_fd, do_tls};
           Listen_threads.push_back(runner);
         } else {
@@ -328,127 +327,138 @@ swoc::Errata do_listen(swoc::IPEndpoint &server_addr, bool do_tls) {
 }
 
 void Engine::command_run() {
-  auto args{arguments.get("run")};
-  std::deque<swoc::IPEndpoint> server_addrs, server_addrs_https;
-  auto server_addr_arg{arguments.get("listen")};
-  auto server_addr_https_arg{arguments.get("listen-https")};
-  auto cert_arg{arguments.get("cert")};
-  auto key_arg{arguments.get("key")};
+  { // Scope errata before the long-lived server loop.
+    Errata errata;
+    auto args{arguments.get("run")};
+    std::deque<swoc::IPEndpoint> server_addrs, server_addrs_https;
+    auto server_addr_arg{arguments.get("listen")};
+    auto server_addr_https_arg{arguments.get("listen-https")};
+    auto cert_arg{arguments.get("cert")};
+    auto key_arg{arguments.get("key")};
 
-  swoc::LocalBufferWriter<1024> w;
+    swoc::LocalBufferWriter<1024> w;
 
-  if (args.size() < 1) {
-    errata.error(
-        R"("run" command requires a directory path as an argument.)");
-  }
-
-  if (key_arg) {
-    HttpHeader::_key_format = key_arg[0];
-  }
-
-  if (server_addr_arg) {
-    if (server_addr_arg.size() == 1) {
-      errata = parse_ips(server_addr_arg[0], server_addrs);
-    } else {
+    if (args.size() < 1) {
       errata.error(
-          R"(--listen option must have a single value, the listen address and port.)");
-    }
-  }
-
-  if (server_addr_https_arg) {
-    if (server_addr_https_arg.size() == 1) {
-      errata = parse_ips(server_addr_https_arg[0], server_addrs_https);
-      if (!errata.is_ok()) {
-        return;
-      }
-      std::error_code ec;
-
-      if (cert_arg.size() >= 1) {
-        swoc::file::path cert_path{cert_arg[0]};
-        if (!cert_path.is_absolute()) {
-          cert_path = ROOT_PATH / cert_path;
-        }
-        auto stat{swoc::file::status(cert_path, ec)};
-        if (ec.value() == 0) {
-          if (is_dir(stat)) {
-            TLSStream::certificate_file = cert_path / "server.pem";
-            TLSStream::privatekey_file = cert_path / "server.key";
-          } else {
-            TLSStream::certificate_file = cert_path;
-          }
-        } else {
-          errata.error(R"(Invalid certificate path "{}": {}.)", cert_arg[0],
-                       ec);
-        }
-      } else {
-        TLSStream::certificate_file = ROOT_PATH / "server.pem";
-        TLSStream::privatekey_file = ROOT_PATH / "server.key";
-      }
-      if (errata.is_ok()) {
-        errata = TLSStream::init();
-      }
-    } else {
-      errata.error(
-          R"(--listen-https option must have a single value, the listen address and port.)");
-    }
-  }
-
-  if (!errata.is_ok()) {
-    return;
-  }
-
-  errata =
-      Load_Replay_Directory(swoc::file::path{args[0]},
-                            [](swoc::file::path const &file) -> swoc::Errata {
-                              ServerReplayFileHandler handler;
-                              return Load_Replay_File(file, handler);
-                            },
-                            10);
-
-  if (!errata.is_ok() && errata.severity() != swoc::Severity::ERROR) {
-    return;
-  }
-  if (errata.count()) {
-    std::cout << errata;
-    errata.clear();
-  }
-
-  // After this, any string expected to be localized that isn't is an error, so
-  // lock down the local string storage to avoid runtime locking and report an
-  // error instead if not found.
-  HttpHeader::_frozen = true;
-  size_t max_content_length = 0;
-  for (auto const &[key, txn] : Transactions) {
-    if (txn._rsp._content_data ==
-        nullptr) { // don't check responses with literal content.
-      max_content_length =
-          std::max<size_t>(max_content_length, txn._rsp._content_size);
-    }
-  }
-  HttpHeader::set_max_content_length(max_content_length);
-  for (auto &[key, txn] : Transactions) {
-    if (txn._rsp._content_data == nullptr) { // fill in from static content.
-      txn._rsp._content_data = txn._rsp._content.data();
-    }
-  }
-
-  std::cout << "Ready with " << Transactions.size() << " transactions."
-            << std::endl;
-
-  for (auto &server_addr : server_addrs) {
-    // Set up listen port.
-    if (server_addr.is_valid()) {
-      errata = do_listen(server_addr, false);
-    }
-    if (!errata.is_ok()) {
+          R"("run" command requires a directory path as an argument.)");
+      status_code = 1;
       return;
     }
-  }
-  for (auto &server_addr_https : server_addrs_https) {
-    if (server_addr_https.is_valid()) {
-      errata = do_listen(server_addr_https, true);
+
+    if (key_arg) {
+      HttpHeader::_key_format = key_arg[0];
     }
-  }
+
+    if (server_addr_arg) {
+      if (server_addr_arg.size() == 1) {
+        errata = parse_ips(server_addr_arg[0], server_addrs);
+      } else {
+        errata.error(
+            R"(--listen option must have a single value, the listen address and port.)");
+        status_code = 1;
+        return;
+      }
+    }
+
+    if (server_addr_https_arg) {
+      if (server_addr_https_arg.size() == 1) {
+        errata = parse_ips(server_addr_https_arg[0], server_addrs_https);
+        if (!errata.is_ok()) {
+          status_code = 1;
+          return;
+        }
+        std::error_code ec;
+
+        if (cert_arg.size() >= 1) {
+          swoc::file::path cert_path{cert_arg[0]};
+          if (!cert_path.is_absolute()) {
+            cert_path = ROOT_PATH / cert_path;
+          }
+          auto stat{swoc::file::status(cert_path, ec)};
+          if (ec.value() == 0) {
+            if (is_dir(stat)) {
+              TLSStream::certificate_file = cert_path / "server.pem";
+              TLSStream::privatekey_file = cert_path / "server.key";
+            } else {
+              TLSStream::certificate_file = cert_path;
+            }
+          } else {
+            errata.error(R"(Invalid certificate path "{}": {}.)", cert_arg[0],
+                         ec);
+            status_code = 1;
+            return;
+          }
+        } else {
+          TLSStream::certificate_file = ROOT_PATH / "server.pem";
+          TLSStream::privatekey_file = ROOT_PATH / "server.key";
+        }
+        if (errata.is_ok()) {
+          errata = TLSStream::init();
+        }
+      } else {
+        errata.error(
+            R"(--listen-https option must have a single value, the listen address and port.)");
+        status_code = 1;
+        return;
+      }
+    }
+
+    if (!errata.is_ok()) {
+      status_code = 1;
+      return;
+    }
+
+    errata =
+        Load_Replay_Directory(swoc::file::path{args[0]},
+                              [](swoc::file::path const &file) -> swoc::Errata {
+                                ServerReplayFileHandler handler;
+                                return Load_Replay_File(file, handler);
+                              },
+                              10);
+
+    if (!errata.is_ok() && errata.severity() != swoc::Severity::ERROR) {
+      status_code = 1;
+      return;
+    }
+
+    // After this, any string expected to be localized that isn't is an error, so
+    // lock down the local string storage to avoid runtime locking and report an
+    // error instead if not found.
+    HttpHeader::_frozen = true;
+    size_t max_content_length = 0;
+    for (auto const &[key, txn] : Transactions) {
+      if (txn._rsp._content_data ==
+          nullptr) { // don't check responses with literal content.
+        max_content_length =
+            std::max<size_t>(max_content_length, txn._rsp._content_size);
+      }
+    }
+    HttpHeader::set_max_content_length(max_content_length);
+    for (auto &[key, txn] : Transactions) {
+      if (txn._rsp._content_data == nullptr) { // fill in from static content.
+        txn._rsp._content_data = txn._rsp._content.data();
+      }
+    }
+
+    errata.info("Ready with {} transactions.", Transactions.size());
+
+    for (auto &server_addr : server_addrs) {
+      // Set up listen port.
+      if (server_addr.is_valid()) {
+        errata.note(do_listen(server_addr, false));
+      }
+      if (!errata.is_ok()) {
+        status_code = 1;
+        return;
+      }
+    }
+    for (auto &server_addr_https : server_addrs_https) {
+      if (server_addr_https.is_valid()) {
+        errata.note(do_listen(server_addr_https, true));
+      }
+    }
+  } // End of scope for errata so it gets logged.
+
 
   // Don't exit until all the listen threads go away
   while (true) {
@@ -457,12 +467,21 @@ void Engine::command_run() {
 }
 
 int main(int argc, const char *argv[]) {
-
-  block_sigpipe();
+  swoc::Errata errata;
+  if (block_sigpipe()) {
+    errata.warn("Could not block SIGPIPE. Continuing anyway, but be aware that SSL_read "
+    "and SSL_write issues may trigger SIGPIPE which will abruptly terminate execution.");
+  }
 
   Engine engine;
 
-  engine.parser.add_option("--verbose", "", "Enable verbose output")
+  engine.parser
+      .add_option("--verbose", "",
+          "Enable verbose output:"
+          "\n\terror: Only print errors."
+          "\n\twarn: Print warnings and errors."
+          "\n\tinfo: Print info messages in addition to warnings and errors. This is the default verbosity level."
+          "\n\tdiag: Print debug messages in addition to info, warnings, and errors,", "", 1, "info")
       .add_option("--version", "-V", "Print version string")
       .add_option("--help", "-h", "Print usage information");
 
@@ -480,17 +499,18 @@ int main(int argc, const char *argv[]) {
 
   // parse the arguments
   engine.arguments = engine.parser.parse(argv);
-  if (auto args{engine.arguments.get("verbose")}; args) {
-    Verbose = true;
+  std::string verbosity = "info";
+  if (const auto verbose_argument{engine.arguments.get("verbose")}; verbose_argument) {
+    verbosity = verbose_argument.value();
+  }
+  if (!configure_logging(verbosity)) {
+    std::cerr << "Unrecognized verbosity option: " << verbosity << std::endl;
+    return 1;
   }
 
   ROOT_PATH = argv[0];
   ROOT_PATH = ROOT_PATH.parent_path().parent_path();
 
   engine.arguments.invoke();
-
-  if (!engine.errata.is_ok()) {
-    std::cerr << engine.errata;
-  }
   return engine.status_code;
 }

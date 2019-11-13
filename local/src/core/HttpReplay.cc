@@ -61,80 +61,121 @@ namespace {
 }();
 }
 
-void block_sigpipe()
+swoc::Rv<int> block_sigpipe()
 {
+  swoc::Rv<int> zret = 0;
   sigset_t set;
-  sigemptyset(&set);
-  sigaddset(&set, SIGPIPE);
-  if (pthread_sigmask(SIG_BLOCK, &set, NULL)) {
-    std::cerr << "Could not block SIGPIPE." << std::endl;
+  if (sigemptyset(&set)) {
+    zret = -1;
+    zret.errata().error(R"(Could not empty the signal set: {})", swoc::bwf::Errno{});
+  } else if (sigaddset(&set, SIGPIPE)) {
+    zret = -1;
+    zret.errata().error(R"(Could not add SIGPIPE to the signal set: {})", swoc::bwf::Errno{});
+  } else if (pthread_sigmask(SIG_BLOCK, &set, NULL)) {
+    zret = -1;
+    zret.errata().error(R"(Could not block SIGPIPE: {})", swoc::bwf::Errno{});
   }
+  return zret;
+}
+
+swoc::Errata configure_logging(const std::string_view verbose_argument)
+{
+  swoc::Errata errata;
+  auto severity_cutoff = swoc::Severity::INFO;
+  if (strcasecmp(verbose_argument, "error") == 0) {
+    severity_cutoff = swoc::Severity::ERROR;
+  } else if (strcasecmp(verbose_argument, "warn") == 0) {
+    severity_cutoff = swoc::Severity::WARN;
+  } else if (strcasecmp(verbose_argument, "info") == 0) {
+    severity_cutoff = swoc::Severity::INFO;
+  } else if (strcasecmp(verbose_argument, "diag") == 0) {
+    severity_cutoff = swoc::Severity::DIAG;
+  } else {
+    errata.error("Unrecognized verbosity parameter: {}", verbose_argument);
+    return errata;
+  }
+  errata.diag("Configuring logging at level {}", severity_cutoff);
+
+  swoc::Errata::register_sink(
+      [severity_cutoff](Errata const &errata) {
+        if (errata.severity() < severity_cutoff) {
+          return;
+        }
+        std::string_view lead;
+        for (const auto& annotation : errata) {
+          if (annotation.severity() < severity_cutoff) {
+            continue;
+          }
+          std::cout << lead << " [" << static_cast<int>(annotation.severity())
+              << "]: " << annotation.text() << std::endl;
+          if (lead.size() == 0) {
+            lead = "  "_sv;
+          }
+        }
+      });
+  return errata;
 }
 
 Stream::Stream() {}
 
 Stream::~Stream() { this->close(); }
 
-int Stream::get_fd() const { return _fd; }
-
-ssize_t Stream::read(swoc::MemSpan<char> span) {
-  ssize_t n = ::read(_fd, span.data(), span.size());
-  if (n <= 0) {
+swoc::Rv<ssize_t> Stream::read(swoc::MemSpan<char> span) {
+  swoc::Rv<ssize_t> zret{
+    ::read(_fd, span.data(), span.size())};
+  if (zret <= 0) {
     this->close();
   }
-  return n;
+  return zret;
 }
 
-ssize_t TLSStream::read(swoc::MemSpan<char> span) {
-  ssize_t n = -1;
-
+swoc::Rv<ssize_t> TLSStream::read(swoc::MemSpan<char> span) {
   errno = 0;
-  n = SSL_read(this->_ssl, span.data(), span.size());
-  const auto ssl_error = (n <= 0) ? SSL_get_error(_ssl, n) : 0;
+  swoc::Rv<ssize_t> zret{SSL_read(this->_ssl, span.data(), span.size())};
+  const auto ssl_error = (zret <= 0) ? SSL_get_error(_ssl, zret) : 0;
 
-  if ((n < 0 && ssl_error != SSL_ERROR_WANT_READ)) {
-    fprintf(stderr, "read of %zu bytes failed: n=%zd ssl_err=%d %s, errno: %s\n",
+  if ((zret < 0 && ssl_error != SSL_ERROR_WANT_READ)) {
+    zret.errata().error(R"(read of {} bytes failed. Bytes read: {}, ssl_err: {}, errno: {})",
             span.size(),
-            n,
-            ssl_error,
-            ERR_reason_error_string(ssl_error),
-            strerror(errno));
+            zret.result(),
+            swoc::bwf::SSLError{ssl_error},
+            swoc::bwf::Errno{});
     this->close();
-  } else if (n == 0) {
+  } else if (zret == 0) {
     this->close();
   }
-  return n;
+  return zret;
 }
 
-ssize_t Stream::write(swoc::TextView view) {
+swoc::Rv<ssize_t> Stream::write(swoc::TextView view) {
   return ::write(_fd, view.data(), view.size());
 }
 
-swoc::Errata Stream::write(HttpHeader const &hdr) {
+swoc::Rv<ssize_t> Stream::write(HttpHeader const &hdr) {
   // 1. header.serialize, write it out
   // 2. transmit the body
   swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-  ssize_t n;
+  swoc::Rv<ssize_t> zret{-1};
 
-  swoc::Errata err = hdr.serialize(w);
+  zret.errata() = hdr.serialize(w);
 
-  if (err.is_ok()) {
-    n = write(w.view());
+  if (zret.is_ok()) {
+    zret.result() = write(w.view());
 
-    if (n == w.size()) {
-      write_body(hdr);
+    if (zret == w.size()) {
+      zret.result() += write_body(hdr);
     } else {
-      err.error(R"(Header write failed - {} of {} bytes written - {}.)", n,
-                   w.size(), swoc::bwf::Errno{});
+      zret.errata().error(R"(Header write failed with {} of {} bytes written: {}.)",
+          zret.result(), w.size(), swoc::bwf::Errno{});
     }
   }
-  return err;
+  return zret;
 }
 
 swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) {
   swoc::Rv<ssize_t> zret{-1};
 
-  Info("Reading header.");
+  zret.errata().diag("Reading header.");
   while (w.remaining() > 0) {
     auto n = read(w.aux_span());
     if (!is_closed()) {
@@ -164,37 +205,36 @@ swoc::Rv<ssize_t> Stream::read_header(swoc::FixedBufferWriter &w) {
   return std::move(zret);
 }
 
-swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
+swoc::Rv<size_t> Stream::drain_body(HttpHeader const &hdr, swoc::TextView initial) {
   static constexpr size_t UNBOUNDED = std::numeric_limits<size_t>::max();
-  swoc::Errata errata;
-  size_t body_size = 0; // bytes drained for the content body.
+  swoc::Rv<size_t> body_size = 0; // bytes drained for the content body.
   std::string buff;
   size_t content_length = hdr._content_length_p ? hdr._content_size : UNBOUNDED;
   if (content_length < initial.size()) {
-    errata.error(
+    body_size.errata().error(
         R"(Response overrun: received {} bytes of content, expected {}.)",
         initial.size(), content_length);
-    return errata;
+    return body_size;
   }
 
   // If there's a status, and it indicates no body, we're done.
   if (hdr._status && HttpHeader::STATUS_NO_CONTENT[hdr._status] &&
       !hdr._content_length_p && !hdr._chunked_p) {
-    return errata;
+    return body_size;
   }
 
   buff.reserve(std::min<size_t>(content_length, MAX_DRAIN_BUFFER_SIZE));
 
   if (is_closed()) {
-    errata.error(R"(drain_body: stream closed) could not read {} bytes)",
+    body_size.errata().error(R"(drain_body: stream closed) could not read {} bytes)",
                  content_length);
-    return errata;
+    return body_size;
   }
 
   if (hdr._chunked_p) {
     ChunkCodex::ChunkCallback cb{
         [&](TextView block, size_t offset, size_t size) -> bool {
-          body_size += block.size();
+          body_size.result() += block.size();
           return true;
         }};
     ChunkCodex codex;
@@ -207,12 +247,12 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
         if (content_length == UNBOUNDED) {
           // Is this an error? It's chunked, so an actual close seems unexpected
           // - should have parsed the empty chunk.
-          Info("Connection closed on unbounded chunked-encoded body.");
+          body_size.errata().info("Connection closed on unbounded chunked-encoded body.");
           result = ChunkCodex::DONE;
         } else {
-          errata.error(
+          body_size.errata().error(
               R"(Response underrun: received {} bytes of content, expected {}, when file closed because {}.)",
-              body_size, content_length, swoc::bwf::Errno{});
+              body_size.result(), content_length, swoc::bwf::Errno{});
         }
         break;
       } else {
@@ -221,11 +261,11 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
     }
     if (result != ChunkCodex::DONE ||
         (content_length != UNBOUNDED && body_size != content_length)) {
-      errata.error(R"(Invalid response - expected {} bytes, drained {} byts.)",
-                   content_length, body_size);
-      return errata;
+      body_size.errata().error(R"(Invalid chunked response: expected {} bytes, drained {} bytes. Chunk is done: {}.)",
+                   content_length, body_size.result(), result != ChunkCodex::DONE);
+      return body_size;
     }
-    Info("Drained {} chunked bytes.", body_size);
+    body_size.errata().diag("Drained {} chunked bytes.", body_size.result());
   } else {
     body_size = initial.size();
     while (body_size < content_length) {
@@ -236,33 +276,32 @@ swoc::Errata Stream::drain_body(HttpHeader &hdr, swoc::TextView initial) {
       // the connection. Thus we check is_closed() here.
       if (is_closed()) {
         if (content_length == UNBOUNDED) {
-          Info("Connection closed on unbounded body");
+          body_size.errata().diag("Connection closed on unbounded body");
         } else {
-          errata.error(
+          body_size.errata().error(
               R"(Response underrun: received {} bytes  of content, expected {}, when file closed because {}.)",
-              body_size, content_length, swoc::bwf::Errno{});
+              body_size.result(), content_length, swoc::bwf::Errno{});
         }
         break;
       }
-      body_size += n;
+      body_size.result() += n;
     }
     if (body_size > content_length) {
-      errata.error(
+      body_size.errata().error(
           R"(Invalid response: expected {} fixed bytes, drained {} byts.)",
-          content_length, body_size);
-      return errata;
+          content_length, body_size.result());
+      return body_size;
     }
-    Info("Drained {} bytes.", body_size);
+    body_size.errata().diag("Drained {} bytes.", body_size.result());
   }
-  return errata;
+  return body_size;
 }
 
-swoc::Errata Stream::write_body(HttpHeader const &hdr) {
-  swoc::Errata errata;
-  ssize_t n;
+swoc::Rv<ssize_t> Stream::write_body(HttpHeader const &hdr) {
+  swoc::Rv<ssize_t> bytes_written;
   std::error_code ec;
 
-  Info("Transmit {} byte body {}{}.", hdr._content_size,
+  bytes_written.errata().diag("Transmit {} byte body {}{}.", hdr._content_size,
        swoc::bwf::If(hdr._content_length_p, "[CL]"),
        swoc::bwf::If(hdr._chunked_p, "[chunked]"));
 
@@ -280,66 +319,60 @@ swoc::Errata Stream::write_body(HttpHeader const &hdr) {
 
     if (hdr._chunked_p) {
       ChunkCodex codex;
-      std::tie(n, ec) = codex.transmit(*this, content);
+      std::tie(bytes_written, ec) = codex.transmit(*this, content);
     } else {
-      n = write(content);
+      bytes_written = write(content);
       ec = std::error_code(errno, std::system_category());
 
       if (!hdr._content_length_p) { // no content-length, must close to signal
                                     // end of body
-        Info("No CL, status {} - closing.", hdr._status);
+        bytes_written.errata().diag("No content length, status {}. Closing the connection.", hdr._status);
         close();
       }
     }
 
-    if (n != hdr._content_size) {
-      errata.error(R"(Body write{} failed - {} of {} bytes written - {}.)",
-                   swoc::bwf::If(hdr._chunked_p, " [chunked]"), n,
+    if (bytes_written != hdr._content_size) {
+      bytes_written.errata().error(R"(Body write{} failed with {} of {} bytes written: {}.)",
+                   swoc::bwf::If(hdr._chunked_p, " [chunked]"), bytes_written.result(),
                    hdr._content_size, ec);
     }
   } else if (hdr._content_size == 0 && hdr._status &&
              !HttpHeader::STATUS_NO_CONTENT[hdr._status] && !hdr._chunked_p &&
              !hdr._content_length_p) {
     // There's no body but the status expects one, so signal no body with EOS.
-    Info("No CL or TE, status {}: closing.", hdr._status);
+    bytes_written.errata().diag("No CL or TE, status {}: closing.", hdr._status);
     close();
   }
 
-  return errata;
+  return bytes_written;
 }
 
-ssize_t TLSStream::write(swoc::TextView view) {
+swoc::Rv<ssize_t> TLSStream::write(swoc::TextView view) {
   int total_size = view.size();
-  int num_written = 0;
+  swoc::Rv<ssize_t> num_written = 0;
   while (num_written < total_size) {
     errno = 0;
     int n = SSL_write(this->_ssl, view.data() + num_written,
                       view.size() - num_written);
     if (n <= 0) {
-      fprintf(stderr, "write failed: %s, errno: %s\n",
-              ERR_reason_error_string(ERR_peek_last_error()),
-              strerror(errno));
+      num_written.errata().error(R"(write failed: {}, errno: {})",
+              swoc::bwf::SSLError{}, swoc::bwf::Errno{});
       return n;
     } else {
-      num_written += n;
+      num_written.result() += n;
     }
   }
   return num_written;
 }
 
-swoc::Errata Stream::open(int fd) {
+swoc::Errata Stream::set_fd(int fd) {
   swoc::Errata errata;
   this->close();
   _fd = fd;
   return errata;
 }
 
-swoc::Errata Stream::accept() {
-  swoc::Errata errata;
-  return errata;
-}
-
-// Complete the TLS handshake
+// Wait upon the client to initiate a TSL handshake and then complete the handshake.
 swoc::Errata TLSStream::accept() {
   swoc::Errata errata;
   _ssl = SSL_new(server_ctx);
@@ -364,7 +397,7 @@ swoc::Errata Stream::connect() {
   return errata;
 }
 
-// Complate the TLS handshake
+// Initiate the TLS handshake.
 swoc::Errata TLSStream::connect() {
   swoc::Errata errata;
   _ssl = SSL_new(client_ctx);
@@ -577,10 +610,11 @@ void RuleCheck::options_init() {
 
 std::shared_ptr<RuleCheck> RuleCheck::find(const YAML::Node &node,
                                            swoc::TextView name) {
+  swoc::Errata errata;
   auto flag_identifier = swoc::TextView(node[YAML_RULE_TYPE_KEY].Scalar());
   auto fn_iter = options.find(flag_identifier);
   if (fn_iter == options.end()) {
-    Info(R"(Invalid Test: Key: "{}")", flag_identifier);
+    errata.info(R"(Invalid Test: Key: "{}")", flag_identifier);
     return nullptr;
   }
   return fn_iter->second(
@@ -613,35 +647,38 @@ PresenceCheck::PresenceCheck(swoc::TextView name) { _name = name; }
 AbsenceCheck::AbsenceCheck(swoc::TextView name) { _name = name; }
 
 bool EqualityCheck::test(swoc::TextView name, swoc::TextView value) const {
+  swoc::Errata errata;
   if (name.empty())
-    Info(R"(Equals Violation: Absent. Key: "{}", Correct Value: "{}")", _name,
+    errata.info(R"(Equals Violation: Absent. Key: "{}", Correct Value: "{}")", _name,
          _value);
   else if (strcasecmp(value, _value))
-    Info(
+    errata.info(
         R"(Equals Violation: Different. Key: "{}", Correct Value: "{}", Actual Value: "{}")",
         _name, _value, value);
   else {
-    Info(R"(Equals Success: Key: "{}", Value: "{}")", _name, _value);
+    errata.info(R"(Equals Success: Key: "{}", Value: "{}")", _name, _value);
     return true;
   }
   return false;
 }
 
 bool PresenceCheck::test(swoc::TextView name, swoc::TextView value) const {
+  swoc::Errata errata;
   if (name.empty()) {
-    Info(R"(Presence Violation: Absent. Key: "{}")", _name);
+    errata.info(R"(Presence Violation: Absent. Key: "{}")", _name);
     return false;
   }
-  Info(R"(Presence Success: Key: "{}", Value: "{}")", _name, value);
+  errata.info(R"(Presence Success: Key: "{}", Value: "{}")", _name, value);
   return true;
 }
 
 bool AbsenceCheck::test(swoc::TextView name, swoc::TextView value) const {
+  swoc::Errata errata;
   if (!name.empty()) {
-    Info(R"(Absence Violation: Present. Key: "{}", Value: "{}")", _name, value);
+    errata.info(R"(Absence Violation: Present. Key: "{}", Value: "{}")", _name, value);
     return false;
   }
-  Info(R"(Absence Success: Key: "{}")", _name);
+  errata.info(R"(Absence Success: Key: "{}")", _name);
   return true;
 }
 
@@ -667,8 +704,8 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
              spot != _fields_rules._fields.end()) {
     cl = swoc::svtou(spot->second);
     if (_content_size != 0 && cl != _content_size) {
-      errata.info(R"(Conflicting sizes using "{}" value {} instead of {}.)", cl,
-                  _content_size);
+      errata.diag(R"(Conflicting sizes for "{}", using rule value {} instead of header value {}.)",
+          FIELD_CONTENT_LENGTH, cl, _content_size);
     }
     _content_size = cl;
     _content_length_p = true;
@@ -909,7 +946,7 @@ std::string HttpHeader::make_key() {
 
 bool HttpHeader::verify_headers(const HttpFields &rules_) const {
   // Remains false if no issue is observed
-  // Setting true does not break loop because test() calls Info()
+  // Setting true does not break loop because test() calls errata.diag()
   bool issue_exists = false;
   for (auto rule_iter = rules_._rules.cbegin();
        rule_iter != rules_._rules.cend(); ++rule_iter) {
@@ -1009,7 +1046,7 @@ HttpHeader::parse_request(swoc::TextView data) {
 
 swoc::Rv<HttpHeader::ParseResult>
 HttpHeader::parse_response(swoc::TextView data) {
-  swoc::Rv<ParseResult> zret;
+  swoc::Rv<ParseResult> zret{PARSE_OK};
   auto eoh = data.find(HTTP_EOH);
 
   if (swoc::TextView::npos == eoh) {
@@ -1115,10 +1152,9 @@ BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
 
 swoc::Errata Load_Replay_File(swoc::file::path const &path,
                               ReplayFileHandler &handler) {
-  swoc::Errata errata;
-  std::error_code ec;
-  errata = handler.file_open(path);
+  auto errata = handler.file_open(path);
   if (errata.is_ok()) {
+    std::error_code ec;
     std::string content{swoc::file::load(path, ec)};
     if (ec.value()) {
       errata.error(R"(Error loading "{}": {})", path, ec);
@@ -1199,7 +1235,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                 errata.note(result);
               }
             } else {
-              errata.info(R"(Session list at "{}":{} is an empty list.)",
+              errata.diag(R"(Session list at "{}":{} is an empty list.)",
                           path, ssn_list_node.Mark().line);
             }
           } else {
@@ -1262,7 +1298,7 @@ Load_Replay_Directory(swoc::file::path const &path,
         }
       };
 
-      Info("Loading {} replay files.", n_sessions);
+      errata.info("Loading {} replay files.", n_sessions);
       std::vector<std::thread> threads;
       threads.reserve(n_threads);
       for (int tidx = 0; tidx < n_threads; ++tidx) {
