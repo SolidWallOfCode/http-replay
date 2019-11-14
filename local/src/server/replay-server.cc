@@ -130,7 +130,7 @@ swoc::Errata ServerReplayFileHandler::proxy_request(YAML::Node const &node) {
   if (errata.is_ok()) {
     _key = _txn._req.make_key();
   }
-  return errata;
+  return std::move(errata);
 }
 
 swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
@@ -155,7 +155,7 @@ swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
       }
     }
   }
-  return errata;
+  return std::move(errata);
 }
 
 swoc::Errata ServerReplayFileHandler::txn_close() {
@@ -323,7 +323,7 @@ swoc::Errata do_listen(swoc::IPEndpoint &server_addr, bool do_tls) {
   if (!errata.is_ok() && socket_fd >= 0) {
     close(socket_fd);
   }
-  return errata;
+  return std::move(errata);
 }
 
 void Engine::command_run() {

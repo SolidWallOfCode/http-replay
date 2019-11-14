@@ -161,7 +161,7 @@ swoc::Errata ClientReplayFileHandler::ssn_open(YAML::Node const &node) {
     }
   }
 
-  return errata;
+  return std::move(errata);
 }
 
 swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
@@ -177,7 +177,7 @@ swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
         _path, node.Mark().line, YAML_PROXY_RSP_KEY);
   }
   if (!errata.is_ok()) {
-    return errata;
+    return std::move(errata);
   }
   LoadMutex.lock();
   return {};
@@ -239,7 +239,7 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
   auto&& [bytes_written, write_errata] = stream.write(txn._req);
   errata.note(write_errata);
   if (!write_errata.is_ok()) {
-    return errata;
+    return std::move(errata);
   }
   errata.diag("Sent the request in {} bytes", bytes_written);
 
@@ -250,7 +250,7 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
 
   if (!read_header_errata.is_ok()) {
     errata.error(R"(Invalid read of a response headers: url={}.)", txn._req._url);
-    return errata;
+    return std::move(errata);
   }
 
   auto body_offset = header_bytes_read;
@@ -260,7 +260,7 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
 
   if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
     errata.error(R"(Invalid parsing of response: url={})", txn._req._url);
-    return errata;
+    return std::move(errata);
   }
 
   if (rsp_hdr._status == 100) {
@@ -272,7 +272,7 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
 
     if (!read_header_errata.is_ok()) {
       errata.error(R"(Failed to read post 100 header.)");
-      return errata;
+      return std::move(errata);
     }
     body_offset = header_bytes_read;
     auto&& [parse_result, parse_errata] = rsp_hdr.parse_response(TextView(w.data(), body_offset));
@@ -280,7 +280,7 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
 
     if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
       errata.error(R"(Failed to parse post 100 header.)");
-      return errata;
+      return std::move(errata);
     }
   }
 
@@ -289,12 +289,12 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
   if (rsp_hdr._status != txn._rsp._status) {
     errata.error(R"(Unexpected status: expected {}, got {}. url={}.)",
                  txn._rsp._status, rsp_hdr._status, txn._req._url);
-    return errata;
+    return std::move(errata);
   }
   if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
     errata.error(
         R"(Response headers did not match expected response headers.)");
-    return errata;
+    return std::move(errata);
   }
   errata.diag("Reading response body at offset: {}.", body_offset);
   errata.note(rsp_hdr.update_content_length(txn._req._method));
@@ -306,21 +306,21 @@ swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
     errata.error(R"(Content length specificaton mismatch: got {} ({})
   expected {}({}) . url={})", rsp_hdr._content_length_p ? "length" :
   "chunked", rsp_hdr._content_size, txn._rsp._content_length_p ? "length"
-  : "chunked" , txn._rsp._content_size, txn._req._url); return errata;
+  : "chunked" , txn._rsp._content_size, txn._req._url); return std::move(errata);
   }
   if (txn._rsp._content_length_p && txn._rsp._content_size !=
   rsp_hdr._content_size) { errata.error(R"(Content length mismatch: got
   {}, expected {}. url={})", rsp_hdr._content_size,
-  txn._rsp._content_size, txn._req._url); return errata;
+  txn._rsp._content_size, txn._req._url); return std::move(errata);
   }
   */
   auto&& [bytes_drained, drain_errata] = stream.drain_body(rsp_hdr, w.view().substr(body_offset));
   errata.note(drain_errata);
   if (!drain_errata.is_ok()) {
     errata.error(R"(Invalid read of response body: url={})", txn._req._url);
-    return errata;
+    return std::move(errata);
   }
-  return errata;
+  return std::move(errata);
 }
 
 swoc::Errata do_connect(Stream *stream, const swoc::IPEndpoint *real_target) {
@@ -353,7 +353,7 @@ swoc::Errata do_connect(Stream *stream, const swoc::IPEndpoint *real_target) {
   } else {
     errata.error(R"(Failed to open socket: {})", swoc::bwf::Errno{});
   }
-  return errata;
+  return std::move(errata);
 }
 
 swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
@@ -391,7 +391,7 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
       }
     }
   }
-  return errata;
+  return std::move(errata);
 }
 
 void TF_Client(std::thread *t) {
@@ -415,6 +415,7 @@ void TF_Client(std::thread *t) {
     }
   }
 }
+
 bool session_start_compare(const Ssn *ssn1, const Ssn *ssn2) {
   return ssn1->_start < ssn2->_start;
 }
