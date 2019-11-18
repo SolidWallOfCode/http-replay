@@ -100,8 +100,16 @@ class HttpHeader;
  * a -1 in these circumstances if the SIGPIPE doesn't interrupt it, so even
  * with the signal blocked we will still report the issue and continue
  * gracefully if SIGPIPE is raised under these circumstances.
+ *
+ * @return 0 on success, non-zero on failure.
  */
-void block_sigpipe();
+swoc::Rv<int> block_sigpipe();
+
+/** Configure logging.
+ *
+ * @param[in] verbose_argument The user-specified verbosity requested.
+ */
+swoc::Errata configure_logging(const std::string_view verbose_argument);
 
 namespace swoc {
 BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
@@ -346,48 +354,6 @@ public:
   HttpHeader(self_type &&that) = default;
   self_type &operator=(self_type &&that) = default;
 
-  /** Read and parse a header.
-   *
-   * @param reader [in,out] Data source.
-   * @param w [in,out] Read buffer.
-   * @return The size of the parsed header, or errors.
-   *
-   * Because the reading can overrun the header, the overrun must be made
-   * available to the caller.
-   * @a w is updated to mark all data read (via @c w.size() ). The return value
-   * is the size of the header - data past that is the overrun.
-   *
-   * @note The reader may end up with a closed socket if the socket closes while
-   * reading. This must be checked by the caller by calling @c
-   * reader.is_closed().
-   */
-  // swoc::Rv<ssize_t> read_header(Stream &reader, swoc::FixedBufferWriter &w);
-
-  /** Write the body to @a fd.
-   *
-   * @param fd Outpuf file.
-   * @return Errors, if any.
-   *
-   * This synthesizes the content based on values in the header.
-   */
-  // swoc::Errata transmit_body(Stream &stream) const;
-
-  /** Drain the content.
-   *
-   * @param fd [in,out]File to read. This is changed to -1 if closed while
-   * draining.
-   * @param initial Initial part of the body.
-   * @return Errors, if any.
-   *
-   * If the return is an error, @a fd should be closed. It can be the case @a fd
-   * is closed without an error, @a fd must be checked after the call to detect
-   * this.
-   *
-   * @a initial is needed for cases where part of the content is captured while
-   * trying to read the header.
-   */
-  // swoc::Errata drain_body(Stream &stream, TextView initial) const;
-
   swoc::Errata load(YAML::Node const &node);
 
   swoc::Rv<ParseResult> parse_request(TextView data);
@@ -510,35 +476,105 @@ public:
   Stream();
   virtual ~Stream();
 
-  int fd() const;
-  virtual ssize_t read(swoc::MemSpan<char> span);
-  virtual ssize_t write(swoc::TextView data);
-  virtual swoc::Errata write(HttpHeader const &hdr);
-  virtual swoc::Errata write_body(HttpHeader const &hdr);
-  virtual swoc::Errata accept();
+  /** Set the the socket to be associated with this stream.
+   *
+   * @param[in] fd The socket with which this stream is associated.
+   *
+   * @return Any messaging related to setting this socket.
+   */
+  virtual swoc::Errata set_fd(int fd);
+
+  /** A getter for the socket for this stream. */
+  virtual int get_fd() const;
+
+  /** Wait upon and complete the security layer handshakes.
+   *
+   * Sub classes can override this to implement a presentation layer handshake.
+   *
+   * @return Any relevant messaging.
+   */
+  virtual swoc::Errata accept() { return swoc::Errata{}; }
+
+  /** Initiate the security layer handshakes.
+   *
+   * Sub classes can override this to implement a presentation layer handshake.
+   *
+   * @return Any relevant messaging.
+   */
   virtual swoc::Errata connect();
+
+  /** Read from the stream's socket into span.
+   *
+   * @param[in] span The destination for the bytes read from the socket.
+   *
+   * @return The number of bytes read and an errata with any messaging.
+   */
+  virtual swoc::Rv<ssize_t> read(swoc::MemSpan<char> span);
+
+  /** Read the headers to a buffer.
+   *
+   * @param[in] w The buffer into which to write the headers.
+   *
+   * @return The number of bytes read and an errata with messaging.
+   */
   virtual swoc::Rv<ssize_t> read_header(swoc::FixedBufferWriter &w);
-  virtual swoc::Errata drain_body(HttpHeader &hdr, swoc::TextView initial);
 
-  virtual swoc::Errata open(int fd);
+  /** Read body bytes out of the socket.
+   *
+   * @param[in] hdr The headers which specify how many body bytes to read.
+   *
+   * @param[in] initial The body already read from the socket.
+   *
+   * @return The number of bytes drained and an errata with messaging.
+   */
+  virtual swoc::Rv<size_t> drain_body(HttpHeader const &hdr, swoc::TextView initial);
+
+
+  /** Write the content in data to the socket.
+   *
+   * @param[in] data The content to write to the socket.
+   *
+   * @return The number of bytes written and an errata with any messaging.
+   */
+  virtual swoc::Rv<ssize_t> write(swoc::TextView data);
+
+  /** Write the header to the socket.
+   *
+   * @param[in] hdr The headers to write to the socket.
+   *
+   * @return The number of bytes written and an errata with any messaging.
+   */
+  virtual swoc::Rv<ssize_t> write(HttpHeader const &hdr);
+
+  /** Write the number of body bytes as specified by hdr.
+   *
+   * @param[in] hdr The header to inspect to determine how many body bytes to write.
+   *
+   * @return The number of bytes written and an errata with any messaging.
+   */
+  virtual swoc::Rv<ssize_t> write_body(HttpHeader const &hdr);
+
+  /** Whether the connection is currently closed. */
   bool is_closed() const;
-  virtual void close();
 
-protected:
-  int get_fd() const;
+  /** Close the connection. */
+  virtual void close();
 
 private:
   int _fd = -1; ///< Socket.
 };
 
-inline int Stream::fd() const { return _fd; }
+inline int Stream::get_fd() const { return _fd; }
 inline bool Stream::is_closed() const { return _fd < 0; }
 
 class TLSStream : public Stream {
 public:
   using super_type = Stream;
-  virtual ssize_t read(swoc::MemSpan<char> span) override;
-  virtual ssize_t write(swoc::TextView data) override;
+
+  /** @see Stream::read */
+  swoc::Rv<ssize_t> read(swoc::MemSpan<char> span) override;
+  /** @see Stream::write */
+  swoc::Rv<ssize_t> write(swoc::TextView data) override;
   TLSStream() = default;
   TLSStream(swoc::TextView const &client_sni) : _client_sni(client_sni) {}
   ~TLSStream() override {
@@ -546,9 +582,15 @@ public:
       SSL_free(_ssl);
   }
 
+  /** @see Stream::close */
   void close() override;
+  /** @see Stream::accept */
   swoc::Errata accept() override;
+  /** @see Stream::connect */
   swoc::Errata connect() override;
+
+  /** Initialize the TLS context.
+   */
   static swoc::Errata init();
   static swoc::file::path certificate_file;
   static swoc::file::path privatekey_file;
@@ -681,21 +723,6 @@ inline BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
   return bwformat(w, spec, path.string());
 }
 } // namespace swoc
-
-template <typename... Args> void Info(swoc::TextView fmt, Args &&... args) {
-  if (Verbose) {
-    swoc::LocalBufferWriter<1024> w;
-    w.print_v(fmt, std::forward_as_tuple(args...));
-    if (w.error()) {
-      std::string s;
-      swoc::bwprint_v(s, fmt, std::forward_as_tuple(args...));
-      std::cout << s << std::endl;
-      std::cout << s << std::endl;
-    } else {
-      std::cout << w << std::endl;
-    }
-  }
-}
 
 class ThreadInfo {
 public:
