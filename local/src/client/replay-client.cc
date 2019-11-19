@@ -26,19 +26,6 @@ inline BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
 
 using swoc::TextView;
 
-struct Txn {
-  HttpHeader _req; ///< Request to send.
-  HttpHeader _rsp; ///< Rules for response to expect.
-};
-
-struct Ssn {
-  std::list<Txn> _txn;
-  swoc::file::path _path;
-  unsigned _line_no = 0;
-  uint64_t _start; ///< Start time in HR ticks.
-  TextView _client_sni;
-  bool is_tls = false;
-};
 std::mutex LoadMutex;
 
 std::list<Ssn *> Session_List;
@@ -107,6 +94,7 @@ void ClientReplayFileHandler::txn_reset() {
 
 swoc::Errata ClientReplayFileHandler::ssn_open(YAML::Node const &node) {
   static constexpr TextView TLS_PREFIX{"tls"};
+  static constexpr TextView H2_PREFIX{"h2"};
   swoc::Errata errata;
   _ssn = new Ssn();
   _ssn->_path = _path;
@@ -116,6 +104,9 @@ swoc::Errata ClientReplayFileHandler::ssn_open(YAML::Node const &node) {
     auto proto_node{node[YAML_SSN_PROTOCOL_KEY]};
     if (proto_node.IsSequence()) {
       for (auto const &n : proto_node) {
+        if (TextView{n.Scalar()}.starts_with_nocase(H2_PREFIX)) {
+          _ssn->is_h2 = true;
+        }
         if (TextView{n.Scalar()}.starts_with_nocase(TLS_PREFIX)) {
           _ssn->is_tls = true;
           if (auto tls_node{node[YAML_SSN_TLS_KEY]}; tls_node) {
@@ -232,164 +223,33 @@ swoc::Errata ClientReplayFileHandler::ssn_close() {
   return {};
 }
 
-swoc::Errata Run_Transaction(Stream &stream, Txn const &txn) {
-  swoc::Errata errata;
-  errata.diag("Running transaction for url: {}", txn._req._url);
-
-  auto&& [bytes_written, write_errata] = stream.write(txn._req);
-  errata.note(write_errata);
-  if (!write_errata.is_ok()) {
-    return std::move(errata);
-  }
-  errata.diag("Sent the request in {} bytes", bytes_written);
-
-  errata.diag("Reading the response header.");
-  swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-  auto&& [header_bytes_read, read_header_errata] = stream.read_header(w);
-  errata.note(read_header_errata);
-
-  if (!read_header_errata.is_ok()) {
-    errata.error(R"(Invalid read of a response headers: url={}.)", txn._req._url);
-    return std::move(errata);
-  }
-
-  auto body_offset = header_bytes_read;
-  HttpHeader rsp_hdr;
-  auto&& [parse_result, parse_errata] = rsp_hdr.parse_response(TextView(w.data(), body_offset));
-  errata.note(parse_errata);
-
-  if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
-    errata.error(R"(Invalid parsing of response: url={})", txn._req._url);
-    return std::move(errata);
-  }
-
-  if (rsp_hdr._status == 100) {
-    errata.diag("100-Continue response. Read another header.");
-    rsp_hdr = HttpHeader{};
-    w.clear();
-    auto&& [header_bytes_read, read_header_errata] = stream.read_header(w);
-    errata.note(read_header_errata);
-
-    if (!read_header_errata.is_ok()) {
-      errata.error(R"(Failed to read post 100 header.)");
-      return std::move(errata);
-    }
-    body_offset = header_bytes_read;
-    auto&& [parse_result, parse_errata] = rsp_hdr.parse_response(TextView(w.data(), body_offset));
-    errata.note(parse_errata);
-
-    if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
-      errata.error(R"(Failed to parse post 100 header.)");
-      return std::move(errata);
-    }
-  }
-
-  errata.diag(R"(Response status: {})", rsp_hdr._status);
-  errata.diag("{}", rsp_hdr);
-  if (rsp_hdr._status != txn._rsp._status) {
-    errata.error(R"(Unexpected status: expected {}, got {}. url={}.)",
-                 txn._rsp._status, rsp_hdr._status, txn._req._url);
-    return std::move(errata);
-  }
-  if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
-    errata.error(
-        R"(Response headers did not match expected response headers.)");
-    return std::move(errata);
-  }
-  errata.diag("Reading response body at offset: {}.", body_offset);
-  errata.note(rsp_hdr.update_content_length(txn._req._method));
-  errata.note(rsp_hdr.update_transfer_encoding());
-  /* Looks like missing plugins is causing issues with length mismatches
-   */
-  /*
-  if (txn._rsp._content_length_p != rsp_hdr._content_length_p) {
-    errata.error(R"(Content length specificaton mismatch: got {} ({})
-  expected {}({}) . url={})", rsp_hdr._content_length_p ? "length" :
-  "chunked", rsp_hdr._content_size, txn._rsp._content_length_p ? "length"
-  : "chunked" , txn._rsp._content_size, txn._req._url); return std::move(errata);
-  }
-  if (txn._rsp._content_length_p && txn._rsp._content_size !=
-  rsp_hdr._content_size) { errata.error(R"(Content length mismatch: got
-  {}, expected {}. url={})", rsp_hdr._content_size,
-  txn._rsp._content_size, txn._req._url); return std::move(errata);
-  }
-  */
-  auto&& [bytes_drained, drain_errata] = stream.drain_body(rsp_hdr, w.view().substr(body_offset));
-  errata.note(drain_errata);
-  if (!drain_errata.is_ok()) {
-    errata.error(R"(Invalid read of response body: url={})", txn._req._url);
-    return std::move(errata);
-  }
-  return std::move(errata);
-}
-
-swoc::Errata do_connect(Stream *stream, const swoc::IPEndpoint *real_target) {
-  swoc::Errata errata;
-  int socket_fd = socket(real_target->family(), SOCK_STREAM, 0);
-  if (0 <= socket_fd) {
-    int ONE = 1;
-    struct linger l;
-    l.l_onoff = 0;
-    l.l_linger = 0;
-    setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, (char *)&l, sizeof(l));
-    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &ONE, sizeof(int)) <
-        0) {
-      errata.error(R"(Could not set reuseaddr on socket {}: {}.)", socket_fd,
-                   swoc::bwf::Errno{});
-    } else {
-      errata = stream->set_fd(socket_fd);
-      if (errata.is_ok()) {
-        if (0 == connect(socket_fd, &real_target->sa, real_target->size())) {
-          static const int ONE = 1;
-          setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &ONE, sizeof(ONE));
-          errata = stream->connect();
-        } else {
-          errata.error(R"(Failed to connect socket: {})", swoc::bwf::Errno{});
-        }
-      } else {
-        errata.error(R"(Failed to open stream: {})", swoc::bwf::Errno{});
-      }
-    }
-  } else {
-    errata.error(R"(Failed to open socket: {})", swoc::bwf::Errno{});
-  }
-  return std::move(errata);
-}
-
 swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
                          swoc::IPEndpoint const &target_https) {
   swoc::Errata errata;
-  std::unique_ptr<Stream> stream;
+  std::unique_ptr<Session> session;
   const swoc::IPEndpoint *real_target;
 
-  errata.diag(R"(Starting session "{}":{}.)", ssn._path, ssn._line_no);
+  errata.diag(R"(Starting session "{}":{} protocol={}.)", ssn._path, ssn._line_no, ssn.is_h2 ? "h2" : (ssn.is_tls ? "https" : "http"));
 
-  if (ssn.is_tls) {
-    stream = std::make_unique<TLSStream>(ssn._client_sni);
+  if (ssn.is_h2) { 
+    session = std::make_unique<H2Session>();
+    real_target = &target_https;
+  } else if (ssn.is_tls) {
+    session = std::make_unique<TLSSession>(ssn._client_sni);
     real_target = &target_https;
     errata.diag("Connecting via TLS.");
   } else {
-    stream = std::make_unique<Stream>();
+    session = std::make_unique<Session>();
     real_target = &target;
     errata.diag("Connecting via HTTP.");
   }
 
-  errata.note(do_connect(stream.get(), real_target));
+  errata.note(session->do_connect(real_target));
   if (errata.is_ok()) {
-    for (auto const &txn : ssn._txn) {
-      if (stream->is_closed()) {
-        // For some reason the connection was closed with the previous
-        // transaction. Simply try to reconnect for this transaction.
-        errata.note(do_connect(stream.get(), real_target));
-      }
-      if (!errata.is_ok()) {
-        break;
-      }
-      errata.note(Run_Transaction(*stream, txn));
-      if (!errata.is_ok()) {
-        errata.error(R"(Failed url={}.)", txn._req._url);
-      }
-    }
+    errata.note(session->run_transactions(ssn._txn, real_target));
+  }
+  if (!errata.is_ok()) {
+    std::cerr << errata;
   }
   return std::move(errata);
 }
@@ -488,8 +348,10 @@ void Engine::command_run() {
     return;
   }
 
-  errata.info(R"(Initializing TLS)");
-  TLSStream::init();
+  errata.diag(R"(Initializing TLS)");
+  TLSSession::init();
+  errata.diag(R"(Initialize H2)");
+  H2Session::init();
 
   // Sort the Session_List and adjust the time offsets
   Session_List.sort(session_start_compare);

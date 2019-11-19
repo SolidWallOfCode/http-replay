@@ -32,6 +32,7 @@
 #include <openssl/ssl.h>
 #include <thread>
 #include <unistd.h>
+#include <nghttp2/nghttp2.h>
 
 #include "yaml-cpp/yaml.h"
 
@@ -317,6 +318,13 @@ public:
    */
   swoc::Errata parse_fields_rules(YAML::Node const &node);
 
+  /** Convert _fields into nghttp2_nv and add them to the vector provided
+   * 
+   * @param [in] l vector of nghttp2_nv structs
+   * @return None
+   */
+  void add_fields_to_ngnva(nghttp2_nv *l) const;
+
   friend class HttpHeader;
 };
 
@@ -381,9 +389,17 @@ public:
   /// independently during load.
   char const *_content_data = nullptr; ///< Literal data for the content.
   size_t _content_size = 0;            ///< Length of the content.
-  TextView _method;
+  TextView _method; // Required
   TextView _http_version;
-  std::string _url;
+  TextView _url;
+
+  bool _send_continue = false;
+
+  // H2 pseudo-headers
+  TextView _scheme; // Required for method
+  TextView _authority; // Required for method
+  TextView _path; // Required for method
+
 
   /// Maps field names to functors (rules) and field names to values (fields)
   HttpFields _fields_rules;
@@ -466,15 +482,30 @@ protected:
   static swoc::MemArena _arena;
 };
 
-/** A stream reader.
+struct Txn {
+  HttpHeader _req; ///< Request to send.
+  HttpHeader _rsp; ///< Rules for response to expect.
+};
+
+struct Ssn {
+  std::list<Txn> _txn;
+  swoc::file::path _path;
+  unsigned _line_no = 0;
+  uint64_t _start; ///< Start time in HR ticks.
+  swoc::TextView _client_sni;
+  bool is_tls = false;
+  bool is_h2 = false;
+};
+
+/** A session reader.
  * This is essentially a wrapper around a socket to support use of @c epoll on the
  * socket. The goal is to enable a read operation that waits for data but
  * returns as soon as any data is available.
  */
-class Stream {
+class Session {
 public:
-  Stream();
-  virtual ~Stream();
+  Session();
+  virtual ~Session();
 
   /** Set the the socket to be associated with this stream.
    *
@@ -529,6 +560,7 @@ public:
    */
   virtual swoc::Rv<size_t> drain_body(HttpHeader const &hdr, swoc::TextView initial);
 
+  virtual swoc::Errata do_connect(const swoc::IPEndpoint *real_target);
 
   /** Write the content in data to the socket.
    *
@@ -560,46 +592,103 @@ public:
   /** Close the connection. */
   virtual void close();
 
+  virtual swoc::Errata run_transactions(const std::list<Txn> &txn, const swoc::IPEndpoint *real_target);
+  virtual swoc::Errata run_transaction(const Txn &txn);
+
 private:
   int _fd = -1; ///< Socket.
 };
 
-inline int Stream::get_fd() const { return _fd; }
-inline bool Stream::is_closed() const { return _fd < 0; }
+inline int Session::get_fd() const { return _fd; }
+inline bool Session::is_closed() const { return _fd < 0; }
 
-class TLSStream : public Stream {
+class TLSSession : public Session {
 public:
-  using super_type = Stream;
+  using super_type = Session;
 
-  /** @see Stream::read */
+  /** @see Session::read */
   swoc::Rv<ssize_t> read(swoc::MemSpan<char> span) override;
-  /** @see Stream::write */
+  /** @see Session::write */
   swoc::Rv<ssize_t> write(swoc::TextView data) override;
-  TLSStream() = default;
-  TLSStream(swoc::TextView const &client_sni) : _client_sni(client_sni) {}
-  ~TLSStream() override {
+  TLSSession() = default;
+  TLSSession(swoc::TextView const &client_sni) : _client_sni(client_sni) {}
+  ~TLSSession() override {
     if (_ssl)
       SSL_free(_ssl);
   }
 
-  /** @see Stream::close */
+  /** @see Session::close */
   void close() override;
-  /** @see Stream::accept */
+  /** @see Session::accept */
   swoc::Errata accept() override;
-  /** @see Stream::connect */
+  /** @see Session::connect */
   swoc::Errata connect() override;
-
-  /** Initialize the TLS context.
-   */
-  static swoc::Errata init();
+  swoc::Errata connect(SSL_CTX *ctx);
+  static swoc::Errata init(SSL_CTX *&srv_ctx, SSL_CTX *&clt_ctx);
+  static swoc::Errata init() {
+    return TLSSession::init(server_ctx, client_ctx);
+  }
   static swoc::file::path certificate_file;
   static swoc::file::path privatekey_file;
+
+  SSL *get_ssl() { return _ssl; }
 
 protected:
   SSL *_ssl = nullptr;
   swoc::TextView _client_sni;
   static SSL_CTX *server_ctx;
   static SSL_CTX *client_ctx;
+};
+
+class H2StreamState {
+public:
+  H2StreamState() {}
+  H2StreamState(int32_t stream_id) : _stream_id(stream_id) {}
+  H2StreamState(int32_t stream_id, char *send_body, int send_body_length) : _stream_id(stream_id), _send_body(send_body), _send_body_length(send_body_length) {}
+  int32_t _stream_id = 0;
+  int _data_to_recv = 0;
+  size_t _send_body_offset = 0;
+  const char *_send_body = nullptr;
+  size_t _send_body_length = 0;
+  HttpHeader _req;
+  HttpHeader _resp;
+  bool _wait_for_continue = false;
+};
+
+class H2Session : public TLSSession {
+public:
+  using super_type = TLSSession;
+  H2Session();
+  swoc::Rv<ssize_t> read(swoc::MemSpan<char> span) override;
+  virtual swoc::Rv<ssize_t> write(swoc::TextView data) override;
+  virtual swoc::Rv<ssize_t> write(HttpHeader const &hdr);
+  ~H2Session() override = default;
+
+  swoc::Errata connect() override;
+  static swoc::Errata init(SSL_CTX *&srv_ctx, SSL_CTX *&clt_ctx);
+  static swoc::Errata init() {
+    return H2Session::init(h2_server_ctx, h2_client_ctx);
+  }
+  swoc::Errata session_init();
+  swoc::Errata send_client_connection_header();
+  swoc::Errata run_transactions(const std::list<Txn> &txn, const swoc::IPEndpoint *real_target) override;
+  swoc::Errata run_transaction(const Txn &txn) override;
+
+  nghttp2_session *get_session() { return _session; }
+
+  std::map<int32_t, H2StreamState *> _stream_map;
+
+protected: 
+  nghttp2_session *_session;
+  nghttp2_session_callbacks *callbacks;
+
+  static SSL_CTX *h2_server_ctx;
+  static SSL_CTX *h2_client_ctx;
+
+private:
+  swoc::Errata pack_headers(HttpHeader const &hdr, nghttp2_nv *&nv_hdr, int &hdr_count);
+  nghttp2_nv tv_to_nv(const char *name, swoc::TextView v);
+
 };
 
 class ChunkCodex {
@@ -637,7 +726,7 @@ public:
    *   - An error code, which will be 0 if all data was successfully written.
    */
   std::tuple<ssize_t, std::error_code>
-  transmit(Stream &stream, swoc::TextView data, size_t chunk_size = 4096);
+  transmit(Session &session, swoc::TextView data, size_t chunk_size = 4096);
 
 protected:
   size_t _size = 0; ///< Size of the current chunking being decoded.
@@ -748,3 +837,4 @@ protected:
   std::mutex _threadPoolMutex;
   const int max_threads = 2000;
 };
+

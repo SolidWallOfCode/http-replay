@@ -3,6 +3,7 @@ PartName("replay-client")
 
 env.DependsOn([
     Component("openssl"),
+    Component("nghttp2"),
     Component("swoc++"),
     Component("yaml-cpp"),
     Component("http-replay.core"),

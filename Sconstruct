@@ -18,8 +18,20 @@ AddOption("--with-ssl",
           help='Optional path to custom build of OpenSSL'
          )
 
+AddOption("--with-nghttp2",
+          dest='with_nghttp2',
+          nargs=1,
+          type='string',
+          action='store',
+          metavar='DIR',
+          default=None,
+          help='Optional path to custom build of nghttp2'
+         )
+
 path = GetOption("with_ssl")
 Part("#lib/openssl.part", CUSTOM_PATH=path)
+path = GetOption("with_nghttp2")
+Part("#lib/nghttp2.part", CUSTOM_PATH=path)
 Part("#lib/libyaml.part",vcs_type=VcsGit(server="github.com", repository="jbeder/yaml-cpp.git", tag="yaml-cpp-0.6.2"), package_group="http-replay")
 Part("swoc++/swoc++.part",vcs_type=VcsGit(server="github.com", repository="SolidWallOfCode/libswoc", tag="dev-1-0-8"), package_group="http-replay")
 

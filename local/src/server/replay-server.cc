@@ -47,8 +47,8 @@ std::list<std::thread *> Listen_threads;
 
 class ServerThreadInfo : public ThreadInfo {
 public:
-  Stream *_stream = nullptr;
-  bool data_ready() override { return this->_stream; }
+  Session *_session = nullptr;
+  bool data_ready() override { return this->_session; }
 };
 
 class ServerThreadPool : public ThreadPool {
@@ -57,6 +57,8 @@ public:
 };
 
 ServerThreadPool Server_Thread_Pool;
+
+HttpHeader Continue_resp;
 
 std::thread ServerThreadPool::make_thread(std::thread *t) {
   return std::thread(
@@ -80,11 +82,6 @@ struct Engine {
 bool Shutdown_Flag = false;
 
 std::mutex LoadMutex;
-
-struct Txn {
-  HttpHeader _req;
-  HttpHeader _rsp;
-};
 
 std::unordered_map<std::string, Txn, std::hash<std::string_view>> Transactions;
 
@@ -173,11 +170,11 @@ void TF_Serve(std::thread *t) {
 
     Server_Thread_Pool.wait_for_work(&thread_info);
 
-    errata = thread_info._stream->accept();
-    while (!thread_info._stream->is_closed() && errata.is_ok()) {
+    errata = thread_info._session->accept();
+    while (!thread_info._session->is_closed() && errata.is_ok()) {
       HttpHeader req_hdr;
       swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
-      auto&& [header_bytes_read, read_header_errata] = thread_info._stream->read_header(w);
+      auto&& [header_bytes_read, read_header_errata] = thread_info._session->read_header(w);
       errata.note(read_header_errata);
       if (!read_header_errata.is_ok()) {
         errata.error("Could not read the header.");
@@ -206,24 +203,27 @@ void TF_Serve(std::thread *t) {
         errata.error(R"(Proxy request with key "{}" not found.)", key);
         break;
       }
+
       [[maybe_unused]] auto &[unused_key, txn] = *specified_response;
 
       errata.note(req_hdr.update_content_length(req_hdr._method));
       errata.note(req_hdr.update_transfer_encoding());
 
+      // If there is an Expect header with the value of 100-continue, send the 100-continue response before 
+      // Reading request body.
+      if (req_hdr._send_continue) {
+        auto&& [bytes_written, write_errata] = thread_info._session->write(Continue_resp);
+      }
+
       if (req_hdr._content_length_p || req_hdr._chunked_p) {
         errata.diag("Draining request body.");
-        auto&& [bytes_drained, drain_errata] = thread_info._stream->drain_body(req_hdr, w.view().substr(body_offset));
+        auto&& [bytes_drained, drain_errata] = thread_info._session->drain_body(req_hdr, w.view().substr(body_offset));
         errata.note(drain_errata);
 
         if (!errata.is_ok()) {
           errata.error("Failed to drain the request body.");
           break;
         }
-      }
-      if (!errata.is_ok()) {
-        errata.error("Error generating a response to request with url: {}", req_hdr._url);
-        break;
       }
       errata.diag("Validating request with url: {}", req_hdr._url);
       errata.diag("{}", req_hdr);
@@ -237,23 +237,23 @@ void TF_Serve(std::thread *t) {
       // requests.
       txn._rsp.update_content_length(req_hdr._method);
       errata.diag("Responding to request {} with status {}.", req_hdr._url, txn._rsp._status);
-      auto&& [bytes_written, write_errata] = thread_info._stream->write(txn._rsp);
+      auto&& [bytes_written, write_errata] = thread_info._session->write(txn._rsp);
       errata.note(write_errata);
       errata.diag("Wrote {} bytes in response to request with url {} with response status {}",
           bytes_written, req_hdr._url, txn._rsp._status);
     }
 
-    // cleanup and get ready for another stream.
+    // cleanup and get ready for another session.
     {
       std::unique_lock<std::mutex> lock(thread_info._mutex);
-      delete thread_info._stream;
-      thread_info._stream = nullptr;
+      delete thread_info._session;
+      thread_info._session = nullptr;
     }
   }
 }
 
 void TF_Accept(int socket_fd, bool do_tls) {
-  std::unique_ptr<Stream> stream;
+  std::unique_ptr<Session> session;
   while (!Shutdown_Flag) {
     swoc::Errata errata;
     swoc::IPEndpoint remote_addr;
@@ -264,11 +264,11 @@ void TF_Accept(int socket_fd, bool do_tls) {
       continue;
     }
     if (do_tls) {
-      stream = std::make_unique<TLSStream>();
+      session = std::make_unique<TLSSession>();
     } else {
-      stream = std::make_unique<Stream>();
+      session = std::make_unique<Session>();
     }
-    errata.note(stream->set_fd(fd));
+    errata = session->set_fd(fd);
     if (!errata.is_ok()) {
       continue;
     }
@@ -283,9 +283,9 @@ void TF_Accept(int socket_fd, bool do_tls) {
       // Only pointer to worker thread info.
       {
         std::unique_lock<std::mutex> lock(thread_info->_mutex);
-        thread_info->_stream = stream.release();
+        thread_info->_session = session.release();
         thread_info->_cvar.notify_one();
-      }
+      } 
     }
   }
 }
@@ -377,10 +377,10 @@ void Engine::command_run() {
           auto stat{swoc::file::status(cert_path, ec)};
           if (ec.value() == 0) {
             if (is_dir(stat)) {
-              TLSStream::certificate_file = cert_path / "server.pem";
-              TLSStream::privatekey_file = cert_path / "server.key";
+              TLSSession::certificate_file = cert_path / "server.pem";
+              TLSSession::privatekey_file = cert_path / "server.key";
             } else {
-              TLSStream::certificate_file = cert_path;
+              TLSSession::certificate_file = cert_path;
             }
           } else {
             errata.error(R"(Invalid certificate path "{}": {}.)", cert_arg[0],
@@ -389,11 +389,11 @@ void Engine::command_run() {
             return;
           }
         } else {
-          TLSStream::certificate_file = ROOT_PATH / "server.pem";
-          TLSStream::privatekey_file = ROOT_PATH / "server.key";
+          TLSSession::certificate_file = ROOT_PATH / "server.pem";
+          TLSSession::privatekey_file = ROOT_PATH / "server.key";
         }
         if (errata.is_ok()) {
-          errata = TLSStream::init();
+          errata = TLSSession::init();
         }
       } else {
         errata.error(
@@ -401,11 +401,6 @@ void Engine::command_run() {
         status_code = 1;
         return;
       }
-    }
-
-    if (!errata.is_ok()) {
-      status_code = 1;
-      return;
     }
 
     errata =
@@ -510,6 +505,10 @@ int main(int argc, const char *argv[]) {
 
   ROOT_PATH = argv[0];
   ROOT_PATH = ROOT_PATH.parent_path().parent_path();
+
+  Continue_resp._status = 100;
+  Continue_resp._http_version = "1.1";
+  Continue_resp._reason = "continue";
 
   engine.arguments.invoke();
   return engine.status_code;
