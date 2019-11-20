@@ -645,13 +645,7 @@ swoc::Errata H2Session::run_transaction(const Txn &txn)
   // Write the header
   errata.note(this->write(txn._req).errata());
 
-  if (txn._req._send_continue) {
-    // Wait for 100-continue header before sending post body
-  }
-
   errata.diag("wrote header");
-
-  this->write_body(txn._req);
 
   return std::move(errata);
 }
@@ -731,6 +725,19 @@ static int on_header_callback(nghttp2_session *session, const nghttp2_frame *fra
                               const uint8_t *value, size_t valuelen, uint8_t flags, void *user_data)
 {
   swoc::Errata errata;
+  if (frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
+    H2Session *session_data = reinterpret_cast<H2Session *>(user_data);
+    // See if we are expecting a 100 response
+    //
+    auto iter = session_data->_stream_map.find(frame->hd.stream_id);
+    if (iter != session_data->_stream_map.end()) {
+      if (iter->second->_wait_for_continue) {
+        if (strncmp(reinterpret_cast<const char *>(name), ":status", namelen) == 0 && strncmp(reinterpret_cast<const char *>(value), "100", valuelen) == 0) {
+          iter->second->_wait_for_continue = false;
+        }
+      }
+    }
+  }
   errata.diag("on_header_callback");
   return 0;
 }
@@ -870,16 +877,19 @@ ssize_t data_read_callback(
     nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t length,
     uint32_t *data_flags, nghttp2_data_source *source, void *user_data)
 {
+  size_t num_to_copy = 0;
   H2StreamState *state = reinterpret_cast<H2StreamState*>(nghttp2_session_get_stream_user_data(session, stream_id));
-  size_t num_to_copy = std::min(length, state->_send_body_length - state->_send_body_offset);
-  if (num_to_copy > 0) {
-    memcpy(buf, state->_send_body + state->_send_body_offset, num_to_copy);
-    state->_send_body_offset += num_to_copy;
-  } else {
-    num_to_copy = 0;
-  }
-  if (state->_send_body_offset >= state->_send_body_length) {
-    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+  if (!state->_wait_for_continue) {
+    num_to_copy = std::min(length, state->_send_body_length - state->_send_body_offset);
+    if (num_to_copy > 0) {
+      memcpy(buf, state->_send_body + state->_send_body_offset, num_to_copy);
+      state->_send_body_offset += num_to_copy;
+    } else {
+      num_to_copy = 0;
+    }
+    if (state->_send_body_offset >= state->_send_body_length) {
+      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+    }
   }
   return num_to_copy;  
 }
@@ -912,6 +922,8 @@ swoc::Rv<ssize_t> H2Session::write(HttpHeader const &hdr) {
     data_prd.read_callback = data_read_callback;
     stream_state->_send_body = content.data();
     stream_state->_send_body_length = content.size();
+    stream_state->_req = &hdr;
+    stream_state->_wait_for_continue = hdr._send_continue;
     stream_id = nghttp2_submit_request(this->_session, nullptr, hdrs, hdr_count, &data_prd, stream_state);
   } else {
     stream_id = nghttp2_submit_request(this->_session, nullptr, hdrs, hdr_count, nullptr, stream_state);

@@ -650,8 +650,8 @@ public:
   size_t _send_body_offset = 0;
   const char *_send_body = nullptr;
   size_t _send_body_length = 0;
-  HttpHeader _req;
-  HttpHeader _resp;
+  const HttpHeader *_req = nullptr;
+  const HttpHeader *_resp = nullptr;
   bool _wait_for_continue = false;
 };
 
