@@ -806,11 +806,13 @@ static ssize_t recv_callback(nghttp2_session *session, uint8_t *buf,
     errata.diag("Read {} bytes", n);
     int rv = nghttp2_session_mem_recv(session_data->get_session(), buffer, (size_t)n);
     errata.diag("Processed {} bytes", rv);
-    if (rv <= 0) {
+    if (rv < 0) {
       fprintf(stderr, "error: (nghttp2_session_mem_recv) %s\n",
               nghttp2_strerror((int)rv));
       return -1;
-    }
+    } else if (rv == 0) {
+      return total_recv;
+    } 
     total_recv += rv;
     // opportunity to send any frames like the window_update frame
     send_callback(session, nullptr, 0, 0, user_data);
