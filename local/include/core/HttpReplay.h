@@ -592,6 +592,8 @@ public:
   /** Close the connection. */
   virtual void close();
 
+  static swoc::Errata init();
+
   virtual swoc::Errata run_transactions(const std::list<Txn> &txn, const swoc::IPEndpoint *real_target);
   virtual swoc::Errata run_transaction(const Txn &txn);
 

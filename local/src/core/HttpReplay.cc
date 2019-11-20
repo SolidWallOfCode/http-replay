@@ -29,6 +29,8 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <vector>
 #include <thread>
@@ -673,6 +675,24 @@ swoc::file::path TLSSession::privatekey_file;
 SSL_CTX *TLSSession::server_ctx = nullptr;
 SSL_CTX *TLSSession::client_ctx = nullptr;
 
+const int MAX_NOFILE = 300000;
+
+swoc::Errata Session::init() {
+ swoc::Errata errata;
+ struct rlimit lim;
+ if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
+    if (MAX_NOFILE > (int)lim.rlim_cur) {
+      lim.rlim_cur = (lim.rlim_max = (rlim_t)MAX_NOFILE);
+      if (setrlimit(RLIMIT_NOFILE, &lim) == 0 && getrlimit(RLIMIT_NOFILE, &lim) == 0) {
+        errata.diag("Updated RLIMIT_NOFILE to {}", MAX_NOFILE);
+      } else {
+        errata.error("Failed setrlimit errno={}", errno);
+      }
+    }
+  }
+  return std::move(errata);
+}
+
 swoc::Errata TLSSession::init(SSL_CTX *&svr_ctx, SSL_CTX *&clt_ctx) {
   swoc::Errata errata;
   SSL_load_error_strings();
@@ -1311,10 +1331,6 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
   } else if (auto spot{_fields_rules._fields.find(FIELD_CONTENT_LENGTH)};
              spot != _fields_rules._fields.end()) {
     cl = swoc::svtou(spot->second);
-    if (_content_size != 0 && cl != _content_size) {
-      errata.diag(R"(Conflicting sizes for "{}", using rule value {} instead of header value {}.)",
-          FIELD_CONTENT_LENGTH, cl, _content_size);
-    }
     _content_size = cl;
     _content_length_p = true;
   }
@@ -1541,15 +1557,25 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
         }
         TextView content{this->localize(data_node.Scalar(), enc)};
         _content_data = content.data();
-        _content_size = content.size();
-        if (content_node[YAML_CONTENT_LENGTH_KEY]) {
-          errata.info(R"(The "{}" key is ignored if "{}" is present at {}.)",
-                      YAML_CONTENT_LENGTH_KEY, YAML_CONTENT_DATA_KEY,
-                      content_node.Mark());
+        int new_content_length = content.size();
+        if (_content_length_p) {
+          if (_content_size != new_content_length) {
+            errata.diag(R"(Conflicting sizes for "Content-Length", using data value {} instead of header value {}.)",
+                        new_content_length, _content_size);
+          }
         }
+        _content_size = new_content_length;
       } else if (auto size_node{content_node[YAML_CONTENT_LENGTH_KEY]};
                  size_node) {
-        _content_size = swoc::svtou(size_node.Scalar());
+        int new_content_length = swoc::svtou(size_node.Scalar());
+        // Cross check against previously read content-length header, if any
+        if (_content_length_p) {
+          if (_content_size != new_content_length) {
+            errata.diag(R"(Conflicting sizes for "Content-Length", using rule value {} instead of header value {}.)",
+                        new_content_length, _content_size);
+          }
+        }
+        _content_size = new_content_length;
       } else {
         errata.error(
             R"("{}" node at {} does not have a "{}" or "{}" key as required.)",
