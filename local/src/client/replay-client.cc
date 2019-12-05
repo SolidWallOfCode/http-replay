@@ -232,6 +232,14 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
   errata.diag(R"(Starting session "{}":{} protocol={}.)", ssn._path, ssn._line_no, ssn.is_h2 ? "h2" : (ssn.is_tls ? "https" : "http"));
 
   if (ssn.is_h2) { 
+    if (Use_Proxy_Request_Directives) {
+      // replay-server does not support HTTP/2 yet. We currently rely upon
+      // TrafficServer to handle HTTP/2 on the client-side and talk HTTP/1 on
+      // the server side. If there is no TrafficServer proxy, ignore the HTTP/2
+      // traffic therefore.
+      errata.diag(R"(Ignoring HTTP/2 traffic in proxy mode, "{}":{})", ssn._path, ssn._line_no);
+      return errata;
+    }
     session = std::make_unique<H2Session>();
     real_target = &target_https;
   } else if (ssn.is_tls) {
