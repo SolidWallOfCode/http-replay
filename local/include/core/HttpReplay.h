@@ -249,7 +249,7 @@ public:
    * found)
    * @return Whether the check was successful or not
    */
-  virtual bool test(swoc::TextView name, swoc::TextView value) const override;
+  bool test(swoc::TextView name, swoc::TextView value) const override;
 };
 
 class PresenceCheck : public RuleCheck {
@@ -269,7 +269,7 @@ public:
    * if not found)
    * @return Whether the check was successful or not
    */
-  virtual bool test(swoc::TextView name, swoc::TextView value) const override;
+  bool test(swoc::TextView name, swoc::TextView value) const override;
 };
 
 class AbsenceCheck : public RuleCheck {
@@ -289,7 +289,7 @@ public:
    * if not found)
    * @return Whether the check was successful or not
    */
-  virtual bool test(swoc::TextView name, swoc::TextView value) const override;
+  bool test(swoc::TextView name, swoc::TextView value) const override;
 };
 
 class HttpFields {
@@ -319,7 +319,7 @@ public:
   swoc::Errata parse_fields_rules(YAML::Node const &node);
 
   /** Convert _fields into nghttp2_nv and add them to the vector provided
-   * 
+   *
    * @param [in] l vector of nghttp2_nv structs
    * @return None
    */
@@ -662,7 +662,7 @@ public:
   using super_type = TLSSession;
   H2Session();
   swoc::Rv<ssize_t> read(swoc::MemSpan<char> span) override;
-  virtual swoc::Rv<ssize_t> write(swoc::TextView data) override;
+  swoc::Rv<ssize_t> write(swoc::TextView data) override;
   virtual swoc::Rv<ssize_t> write(HttpHeader const &hdr);
   ~H2Session() override = default;
 

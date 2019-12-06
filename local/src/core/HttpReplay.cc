@@ -1399,27 +1399,27 @@ HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node) {
   swoc::Errata errata;
 
   for (auto const &node : fields_rules_node) {
-    if (node.IsSequence()) {
-      if (node.size() == 3) {
-        TextView name{HttpHeader::localize(node[0].Scalar())};
-        std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
-        if (!tester) {
-          errata.error("Field rule at {} does not have a valid flag ({})",
-                       node.Mark(), node[2].Scalar());
-        } else {
-          _rules[name] = tester;
-        }
-      } else if (node.size() == 2) {
-        TextView name{HttpHeader::localize(node[0].Scalar())};
-        _fields[name] = node[1].Scalar();
-      } else {
-        errata.error("Field or rule node at {} is not a sequence of length 2 "
-                     "or 3 as required.",
-                     node.Mark());
-      }
-    } else {
+    if (!node.IsSequence()) {
       errata.error("Field or rule at {} is not a sequence as required.",
                    node.Mark());
+    }
+    const auto node_size = node.size();
+    if (node_size != 2 && node_size != 3) {
+      errata.error("Field or rule node at {} is not a sequence of length 2 "
+                   "or 3 as required.",
+                   node.Mark());
+    }
+    TextView name{HttpHeader::localize(node[YAML_RULE_NAME_KEY].Scalar())};
+    _fields[name] = node[YAML_RULE_DATA_KEY].Scalar();
+    if (node_size == 3) {
+      // Contians a verification rule.
+      std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
+      if (!tester) {
+        errata.error("Field rule at {} does not have a valid flag ({})",
+                     node.Mark(), node[YAML_RULE_TYPE_KEY].Scalar());
+      } else {
+        _rules[name] = tester;
+      }
     }
   }
   return std::move(errata);
@@ -1613,16 +1613,15 @@ bool HttpHeader::verify_headers(const HttpFields &rules_) const {
   // Remains false if no issue is observed
   // Setting true does not break loop because test() calls errata.diag()
   bool issue_exists = false;
-  for (auto rule_iter = rules_._rules.cbegin();
-       rule_iter != rules_._rules.cend(); ++rule_iter) {
+  for (const auto& rule: rules_._rules) {
     // Hashing uses strcasecmp internally
-    auto found_iter = _fields_rules._fields.find(rule_iter->first);
+    auto found_iter = _fields_rules._fields.find(rule.first);
     if (found_iter == _fields_rules._fields.cend()) {
-      if (!rule_iter->second->test(swoc::TextView(), swoc::TextView())) {
+      if (!rule.second->test(swoc::TextView(), swoc::TextView())) {
         issue_exists = true;
       }
     } else {
-      if (!rule_iter->second->test(found_iter->first,
+      if (!rule.second->test(found_iter->first,
                                    swoc::TextView(found_iter->second))) {
         issue_exists = true;
       }
