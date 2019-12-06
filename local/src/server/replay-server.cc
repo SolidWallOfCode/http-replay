@@ -360,6 +360,8 @@ void Engine::command_run() {
       }
     }
 
+    Session::init();
+
     if (server_addr_https_arg) {
       if (server_addr_https_arg.size() == 1) {
         errata = parse_ips(server_addr_https_arg[0], server_addrs_https);

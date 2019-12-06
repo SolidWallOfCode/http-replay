@@ -348,6 +348,7 @@ void Engine::command_run() {
     return;
   }
 
+  Session::init();
   errata.diag(R"(Initializing TLS)");
   TLSSession::init();
   errata.diag(R"(Initialize H2)");
