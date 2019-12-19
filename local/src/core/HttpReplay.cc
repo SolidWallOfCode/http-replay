@@ -28,13 +28,12 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-#include <unistd.h>
-#include <sys/time.h>
 #include <sys/resource.h>
-
-#include <vector>
-#include <thread>
+#include <sys/time.h>
+#include <unistd.h>
 #include <algorithm>
+#include <thread>
+#include <vector>
 
 #include <signal.h>
 
@@ -63,8 +62,10 @@ std::bitset<600> HttpHeader::STATUS_NO_CONTENT;
 
 RuleCheck::RuleOptions RuleCheck::options;
 
-static ssize_t send_callback(nghttp2_session *session, const uint8_t *inputdata, size_t length, int flags, void *user_data);
-static ssize_t recv_callback(nghttp2_session *session, uint8_t *buf, size_t length, int flags, void *user_data);
+static ssize_t send_callback(nghttp2_session *session, const uint8_t *inputdata,
+                             size_t length, int flags, void *user_data);
+static ssize_t recv_callback(nghttp2_session *session, uint8_t *buf,
+                             size_t length, int flags, void *user_data);
 
 namespace {
 [[maybe_unused]] bool INITIALIZED = []() -> bool {
@@ -73,16 +74,17 @@ namespace {
 }();
 }
 
-swoc::Rv<int> block_sigpipe()
-{
+swoc::Rv<int> block_sigpipe() {
   swoc::Rv<int> zret = 0;
   sigset_t set;
   if (sigemptyset(&set)) {
     zret = -1;
-    zret.errata().error(R"(Could not empty the signal set: {})", swoc::bwf::Errno{});
+    zret.errata().error(R"(Could not empty the signal set: {})",
+                        swoc::bwf::Errno{});
   } else if (sigaddset(&set, SIGPIPE)) {
     zret = -1;
-    zret.errata().error(R"(Could not add SIGPIPE to the signal set: {})", swoc::bwf::Errno{});
+    zret.errata().error(R"(Could not add SIGPIPE to the signal set: {})",
+                        swoc::bwf::Errno{});
   } else if (pthread_sigmask(SIG_BLOCK, &set, NULL)) {
     zret = -1;
     zret.errata().error(R"(Could not block SIGPIPE: {})", swoc::bwf::Errno{});
@@ -90,8 +92,7 @@ swoc::Rv<int> block_sigpipe()
   return std::move(zret);
 }
 
-swoc::Errata configure_logging(const std::string_view verbose_argument)
-{
+swoc::Errata configure_logging(const std::string_view verbose_argument) {
   swoc::Errata errata;
   auto severity_cutoff = swoc::Severity::INFO;
   if (strcasecmp(verbose_argument, "error") == 0) {
@@ -108,23 +109,22 @@ swoc::Errata configure_logging(const std::string_view verbose_argument)
   }
   errata.diag("Configuring logging at level {}", severity_cutoff);
 
-  swoc::Errata::register_sink(
-      [severity_cutoff](Errata const &errata) {
-        if (errata.severity() < severity_cutoff) {
-          return;
-        }
-        std::string_view lead;
-        for (const auto& annotation : errata) {
-          if (annotation.severity() < severity_cutoff) {
-            continue;
-          }
-          std::cout << lead << " [" << static_cast<int>(annotation.severity())
-              << "]: " << annotation.text() << std::endl;
-          if (lead.size() == 0) {
-            lead = "  "_sv;
-          }
-        }
-      });
+  swoc::Errata::register_sink([severity_cutoff](Errata const &errata) {
+    if (errata.severity() < severity_cutoff) {
+      return;
+    }
+    std::string_view lead;
+    for (const auto &annotation : errata) {
+      if (annotation.severity() < severity_cutoff) {
+        continue;
+      }
+      std::cout << lead << " [" << static_cast<int>(annotation.severity())
+                << "]: " << annotation.text() << std::endl;
+      if (lead.size() == 0) {
+        lead = "  "_sv;
+      }
+    }
+  });
   return std::move(errata);
 }
 
@@ -133,8 +133,7 @@ Session::Session() {}
 Session::~Session() { this->close(); }
 
 swoc::Rv<ssize_t> Session::read(swoc::MemSpan<char> span) {
-  swoc::Rv<ssize_t> zret{
-    ::read(_fd, span.data(), span.size())};
+  swoc::Rv<ssize_t> zret{::read(_fd, span.data(), span.size())};
   if (zret <= 0) {
     this->close();
   }
@@ -147,11 +146,10 @@ swoc::Rv<ssize_t> TLSSession::read(swoc::MemSpan<char> span) {
   const auto ssl_error = (zret <= 0) ? SSL_get_error(_ssl, zret) : 0;
 
   if ((zret < 0 && ssl_error != SSL_ERROR_WANT_READ)) {
-    zret.errata().error(R"(read of {} bytes failed. Bytes read: {}, ssl_err: {}, errno: {})",
-            span.size(),
-            zret.result(),
-            swoc::bwf::SSLError{ssl_error},
-            swoc::bwf::Errno{});
+    zret.errata().error(
+        R"(read of {} bytes failed. Bytes read: {}, ssl_err: {}, errno: {})",
+        span.size(), zret.result(), swoc::bwf::SSLError{ssl_error},
+        swoc::bwf::Errno{});
     this->close();
   } else if (zret == 0) {
     this->close();
@@ -177,7 +175,8 @@ swoc::Rv<ssize_t> Session::write(HttpHeader const &hdr) {
     if (zret == w.size()) {
       zret.result() += write_body(hdr);
     } else {
-      zret.errata().error(R"(Header write failed with {} of {} bytes written: {}.)",
+      zret.errata().error(
+          R"(Header write failed with {} of {} bytes written: {}.)",
           zret.result(), w.size(), swoc::bwf::Errno{});
     }
   }
@@ -217,7 +216,8 @@ swoc::Rv<ssize_t> Session::read_header(swoc::FixedBufferWriter &w) {
   return std::move(zret);
 }
 
-swoc::Rv<size_t> Session::drain_body(HttpHeader const &hdr, swoc::TextView initial) {
+swoc::Rv<size_t> Session::drain_body(HttpHeader const &hdr,
+                                     swoc::TextView initial) {
   static constexpr size_t UNBOUNDED = std::numeric_limits<size_t>::max();
   swoc::Rv<size_t> body_size = 0; // bytes drained for the content body.
   std::string buff;
@@ -238,7 +238,9 @@ swoc::Rv<size_t> Session::drain_body(HttpHeader const &hdr, swoc::TextView initi
   buff.reserve(std::min<size_t>(content_length, MAX_DRAIN_BUFFER_SIZE));
 
   if (is_closed()) {
-    body_size.errata().error(R"(drain_body: stream closed) could not read {} bytes)", body_size.result());
+    body_size.errata().error(
+        R"(drain_body: stream closed) could not read {} bytes)",
+        body_size.result());
     return std::move(body_size);
   }
 
@@ -258,7 +260,8 @@ swoc::Rv<size_t> Session::drain_body(HttpHeader const &hdr, swoc::TextView initi
         if (content_length == UNBOUNDED) {
           // Is this an error? It's chunked, so an actual close seems unexpected
           // - should have parsed the empty chunk.
-          body_size.errata().info("Connection closed on unbounded chunked-encoded body.");
+          body_size.errata().info(
+              "Connection closed on unbounded chunked-encoded body.");
           result = ChunkCodex::DONE;
         } else {
           body_size.errata().error(
@@ -272,8 +275,9 @@ swoc::Rv<size_t> Session::drain_body(HttpHeader const &hdr, swoc::TextView initi
     }
     if (result != ChunkCodex::DONE ||
         (content_length != UNBOUNDED && body_size != content_length)) {
-      body_size.errata().error(R"(Invalid chunked response: expected {} bytes, drained {} bytes. Chunk is done: {}.)",
-                   content_length, body_size.result(), result != ChunkCodex::DONE);
+      body_size.errata().error(
+          R"(Invalid chunked response: expected {} bytes, drained {} bytes. Chunk is done: {}.)",
+          content_length, body_size.result(), result != ChunkCodex::DONE);
       return std::move(body_size);
     }
     body_size.errata().diag("Drained {} chunked bytes.", body_size.result());
@@ -313,8 +317,8 @@ swoc::Rv<ssize_t> Session::write_body(HttpHeader const &hdr) {
   std::error_code ec;
 
   bytes_written.errata().diag("Transmit {} byte body {}{}.", hdr._content_size,
-       swoc::bwf::If(hdr._content_length_p, "[CL]"),
-       swoc::bwf::If(hdr._chunked_p, "[chunked]"));
+                              swoc::bwf::If(hdr._content_length_p, "[CL]"),
+                              swoc::bwf::If(hdr._chunked_p, "[chunked]"));
 
   if (hdr._content_size > 0 ||
       (hdr._status && !HttpHeader::STATUS_NO_CONTENT[hdr._status])) {
@@ -337,21 +341,25 @@ swoc::Rv<ssize_t> Session::write_body(HttpHeader const &hdr) {
 
       if (!hdr._content_length_p) { // no content-length, must close to signal
                                     // end of body
-        bytes_written.errata().diag("No content length, status {}. Closing the connection.", hdr._status);
+        bytes_written.errata().diag(
+            "No content length, status {}. Closing the connection.",
+            hdr._status);
         close();
       }
     }
 
     if (bytes_written != hdr._content_size) {
-      bytes_written.errata().error(R"(Body write{} failed with {} of {} bytes written: {}.)",
-                   swoc::bwf::If(hdr._chunked_p, " [chunked]"), bytes_written.result(),
-                   hdr._content_size, ec);
+      bytes_written.errata().error(
+          R"(Body write{} failed with {} of {} bytes written: {}.)",
+          swoc::bwf::If(hdr._chunked_p, " [chunked]"), bytes_written.result(),
+          hdr._content_size, ec);
     }
   } else if (hdr._content_size == 0 && hdr._status &&
              !HttpHeader::STATUS_NO_CONTENT[hdr._status] && !hdr._chunked_p &&
              !hdr._content_length_p) {
     // There's no body but the status expects one, so signal no body with EOS.
-    bytes_written.errata().diag("No CL or TE, status {}: closing.", hdr._status);
+    bytes_written.errata().diag("No CL or TE, status {}: closing.",
+                                hdr._status);
     close();
   }
 
@@ -360,8 +368,7 @@ swoc::Rv<ssize_t> Session::write_body(HttpHeader const &hdr) {
 
 static void do_error() { printf("Errors:\n"); }
 
-swoc::Errata Session::run_transaction(const Txn &txn)
-{
+swoc::Errata Session::run_transaction(const Txn &txn) {
   swoc::Errata errata;
   errata.diag("Running transaction.");
 
@@ -409,12 +416,13 @@ swoc::Errata Session::run_transaction(const Txn &txn)
           do_error();
           return errata;
         }
-        if (rsp_hdr.verify_headers(txn._rsp._fields_rules)) {
+        if (rsp_hdr.verify_headers(*txn._rsp._fields_rules)) {
           errata.error(
               R"(Response headers did not match expected response headers.)");
           return errata;
         }
-        errata.diag("Reading response body offset={}.", w.view().substr(body_offset));
+        errata.diag("Reading response body offset={}.",
+                    w.view().substr(body_offset));
         rsp_hdr.update_content_length(txn._req._method);
         rsp_hdr.update_transfer_encoding();
         /* Looks like missing plugins is causing issues with length mismatches
@@ -432,7 +440,8 @@ swoc::Errata Session::run_transaction(const Txn &txn)
         txn._rsp._content_size, txn._req._url); return errata;
         }
         */
-        errata.note(this->drain_body(rsp_hdr, w.view().substr(body_offset)).errata());
+        errata.note(
+            this->drain_body(rsp_hdr, w.view().substr(body_offset)).errata());
 
         if (!errata.is_ok()) {
           do_error();
@@ -452,8 +461,8 @@ swoc::Errata Session::run_transaction(const Txn &txn)
   return errata;
 }
 
-swoc::Errata Session::run_transactions(const std::list<Txn> &txn_list, const swoc::IPEndpoint *real_target)
-{
+swoc::Errata Session::run_transactions(const std::list<Txn> &txn_list,
+                                       const swoc::IPEndpoint *real_target) {
   swoc::Errata errata;
 
   for (auto const &txn : txn_list) {
@@ -480,10 +489,10 @@ swoc::Rv<ssize_t> TLSSession::write(swoc::TextView view) {
   while (num_written < total_size) {
     errno = 0;
     const auto n = SSL_write(this->_ssl, view.data() + num_written,
-                      view.size() - num_written);
+                             view.size() - num_written);
     if (n <= 0) {
       num_written.errata().error(R"(write failed: {}, errno: {})",
-              swoc::bwf::SSLError{}, swoc::bwf::Errno{});
+                                 swoc::bwf::SSLError{}, swoc::bwf::Errno{});
       return std::move(num_written);
     } else {
       num_written.result() += n;
@@ -512,8 +521,8 @@ swoc::Errata TLSSession::accept() {
     int retval = SSL_accept(_ssl);
     if (retval <= 0) {
       errata.error(
-          R"(Failed SSL_accept {}, {}.)",
-          swoc::bwf::SSLError{}, swoc::bwf::Errno{});
+          R"(Failed SSL_accept {}, {}.)", swoc::bwf::SSLError{},
+          swoc::bwf::Errno{});
     }
   }
   return std::move(errata);
@@ -557,9 +566,7 @@ swoc::Errata Session::connect() {
   return std::move(errata);
 }
 
-swoc::Errata TLSSession::connect() {
-  return this->connect(client_ctx);
-}
+swoc::Errata TLSSession::connect() { return this->connect(client_ctx); }
 
 // Complete the TLS handshake
 swoc::Errata TLSSession::connect(SSL_CTX *clt_ctx) {
@@ -577,13 +584,12 @@ swoc::Errata TLSSession::connect(SSL_CTX *clt_ctx) {
     int retval = SSL_connect(_ssl);
     if (retval <= 0) {
       errata.error(
-          R"(Failed SSL_connect {}, {}.)",
-          swoc::bwf::SSLError{}, swoc::bwf::Errno{});
+          R"(Failed SSL_connect {}, {}.)", swoc::bwf::SSLError{},
+          swoc::bwf::Errno{});
     }
   }
   return std::move(errata);
 }
-
 
 swoc::Errata H2Session::connect() {
   // Complete the TLS handshake
@@ -616,8 +622,8 @@ swoc::Errata H2Session::connect() {
   return errata;
 }
 
-swoc::Errata H2Session::run_transactions(const std::list<Txn> &txn_list, const swoc::IPEndpoint *real_target)
-{
+swoc::Errata H2Session::run_transactions(const std::list<Txn> &txn_list,
+                                         const swoc::IPEndpoint *real_target) {
   swoc::Errata errata;
 
   for (auto const &txn : txn_list) {
@@ -639,8 +645,7 @@ swoc::Errata H2Session::run_transactions(const std::list<Txn> &txn_list, const s
   return std::move(errata);
 }
 
-swoc::Errata H2Session::run_transaction(const Txn &txn)
-{
+swoc::Errata H2Session::run_transaction(const Txn &txn) {
   swoc::Errata errata;
   errata.diag("Running H2 transaction.");
 
@@ -651,7 +656,6 @@ swoc::Errata H2Session::run_transaction(const Txn &txn)
 
   return std::move(errata);
 }
-
 
 void Session::close() {
   if (!this->is_closed()) {
@@ -678,12 +682,13 @@ SSL_CTX *TLSSession::client_ctx = nullptr;
 const int MAX_NOFILE = 300000;
 
 swoc::Errata Session::init() {
- swoc::Errata errata;
- struct rlimit lim;
- if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
+  swoc::Errata errata;
+  struct rlimit lim;
+  if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
     if (MAX_NOFILE > (int)lim.rlim_cur) {
       lim.rlim_cur = (lim.rlim_max = (rlim_t)MAX_NOFILE);
-      if (setrlimit(RLIMIT_NOFILE, &lim) == 0 && getrlimit(RLIMIT_NOFILE, &lim) == 0) {
+      if (setrlimit(RLIMIT_NOFILE, &lim) == 0 &&
+          getrlimit(RLIMIT_NOFILE, &lim) == 0) {
         errata.diag("Updated RLIMIT_NOFILE to {}", MAX_NOFILE);
       } else {
         errata.error("Failed setrlimit errno={}", errno);
@@ -700,50 +705,47 @@ swoc::Errata TLSSession::init(SSL_CTX *&svr_ctx, SSL_CTX *&clt_ctx) {
 
   svr_ctx = SSL_CTX_new(TLS_server_method());
   if (!TLSSession::certificate_file.empty()) {
-    if (!SSL_CTX_use_certificate_file(svr_ctx,
-                                      TLSSession::certificate_file.c_str(),
-                                      SSL_FILETYPE_PEM)) {
+    if (!SSL_CTX_use_certificate_file(
+            svr_ctx, TLSSession::certificate_file.c_str(), SSL_FILETYPE_PEM)) {
       errata.error(R"(Failed to load cert from "{}": {}.)",
-                   TLSSession::certificate_file,
-                   swoc::bwf::SSLError{});
+                   TLSSession::certificate_file, swoc::bwf::SSLError{});
     } else {
       if (!TLSSession::privatekey_file.empty()) {
         if (!SSL_CTX_use_PrivateKey_file(svr_ctx,
                                          TLSSession::privatekey_file.c_str(),
                                          SSL_FILETYPE_PEM)) {
           errata.error(R"(Failed to load private key from "{}": {}.)",
-                       TLSSession::privatekey_file,
-                       swoc::bwf::SSLError{});
+                       TLSSession::privatekey_file, swoc::bwf::SSLError{});
         }
       } else {
         if (!SSL_CTX_use_PrivateKey_file(svr_ctx,
                                          TLSSession::certificate_file.c_str(),
                                          SSL_FILETYPE_PEM)) {
           errata.error(R"(Failed to load private key from "{}": {}.)",
-                       TLSSession::certificate_file,
-                       swoc::bwf::SSLError{});
+                       TLSSession::certificate_file, swoc::bwf::SSLError{});
         }
       }
     }
   }
   clt_ctx = SSL_CTX_new(TLS_client_method());
   if (!clt_ctx) {
-    errata.error(R"(Failed to create client_ctx: {}.)",
-                 swoc::bwf::SSLError{});
+    errata.error(R"(Failed to create client_ctx: {}.)", swoc::bwf::SSLError{});
   }
   return std::move(errata);
 }
 
-static int on_begin_headers_callback(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
+static int on_begin_headers_callback(nghttp2_session *session,
+                                     const nghttp2_frame *frame,
+                                     void *user_data) {
   swoc::Errata errata;
   errata.diag("on_begin_headers_callback");
   return 0;
 }
 
-static int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame, const uint8_t *name, size_t namelen,
-                              const uint8_t *value, size_t valuelen, uint8_t flags, void *user_data)
-{
+static int on_header_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame, const uint8_t *name,
+                              size_t namelen, const uint8_t *value,
+                              size_t valuelen, uint8_t flags, void *user_data) {
   swoc::Errata errata;
   if (frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
     H2Session *session_data = reinterpret_cast<H2Session *>(user_data);
@@ -752,7 +754,10 @@ static int on_header_callback(nghttp2_session *session, const nghttp2_frame *fra
     auto iter = session_data->_stream_map.find(frame->hd.stream_id);
     if (iter != session_data->_stream_map.end()) {
       if (iter->second->_wait_for_continue) {
-        if (strncmp(reinterpret_cast<const char *>(name), ":status", namelen) == 0 && strncmp(reinterpret_cast<const char *>(value), "100", valuelen) == 0) {
+        if (strncmp(reinterpret_cast<const char *>(name), ":status", namelen) ==
+                0 &&
+            strncmp(reinterpret_cast<const char *>(value), "100", valuelen) ==
+                0) {
           iter->second->_wait_for_continue = false;
         }
       }
@@ -785,7 +790,8 @@ static ssize_t send_callback(nghttp2_session *session, const uint8_t *inputdata,
       amount_sent += n;
 
       errata.diag("Tried to write {} bytes and wrote {} bytes", datalen, n);
-      if (n <= 0) break;
+      if (n <= 0)
+        break;
     }
     total_amount_sent += amount_sent;
   }
@@ -794,17 +800,18 @@ static ssize_t send_callback(nghttp2_session *session, const uint8_t *inputdata,
 }
 
 static ssize_t recv_callback(nghttp2_session *session, uint8_t *buf,
-                       size_t length, int flags, void *user_data) {
+                             size_t length, int flags, void *user_data) {
   H2Session *session_data = reinterpret_cast<H2Session *>(user_data);
   swoc::Errata errata;
   errata.diag("Try to read up to {} bytes", length);
-  unsigned char buffer[10*1024];
+  unsigned char buffer[10 * 1024];
   int total_recv = 0;
 
   while (!session_data->_stream_map.empty()) {
     int n = SSL_read(session_data->get_ssl(), buffer, sizeof(buffer));
     errata.diag("Read {} bytes", n);
-    int rv = nghttp2_session_mem_recv(session_data->get_session(), buffer, (size_t)n);
+    int rv = nghttp2_session_mem_recv(session_data->get_session(), buffer,
+                                      (size_t)n);
     errata.diag("Processed {} bytes", rv);
     if (rv < 0) {
       fprintf(stderr, "error: (nghttp2_session_mem_recv) %s\n",
@@ -838,7 +845,7 @@ static int on_frame_recv_cb(nghttp2_session *session,
     break;
   case NGHTTP2_HEADERS: // Dealt with this in the on_headers callbacks
     break;
-  case NGHTTP2_PRIORITY:  // Not doing anything here
+  case NGHTTP2_PRIORITY: // Not doing anything here
     break;
   case NGHTTP2_RST_STREAM: // Close down the stream, now
     break;
@@ -881,7 +888,9 @@ H2Session::H2Session() {
   // TODO - will not compile because I need to figure out what USER_DATA is
   // nghttp2_session_client_new(&_session, callbacks, USER_DATA);
 
-  /*rv = nghttp2_submit_settings(_session, NGHTTP2_FLAG_NONE, NULL, 0);*/ // probably not needed
+  /*rv = nghttp2_submit_settings(_session, NGHTTP2_FLAG_NONE, NULL, 0);*/ // probably
+                                                                          // not
+                                                                          // needed
   callbacks = nullptr;
 }
 
@@ -895,14 +904,15 @@ swoc::Rv<ssize_t> H2Session::write(swoc::TextView data) {
   return zret;
 }
 
-ssize_t data_read_callback(
-    nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t length,
-    uint32_t *data_flags, nghttp2_data_source *source, void *user_data)
-{
+ssize_t data_read_callback(nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
+                           nghttp2_data_source *source, void *user_data) {
   size_t num_to_copy = 0;
-  H2StreamState *state = reinterpret_cast<H2StreamState*>(nghttp2_session_get_stream_user_data(session, stream_id));
+  H2StreamState *state = reinterpret_cast<H2StreamState *>(
+      nghttp2_session_get_stream_user_data(session, stream_id));
   if (!state->_wait_for_continue) {
-    num_to_copy = std::min(length, state->_send_body_length - state->_send_body_offset);
+    num_to_copy =
+        std::min(length, state->_send_body_length - state->_send_body_offset);
     if (num_to_copy > 0) {
       memcpy(buf, state->_send_body + state->_send_body_offset, num_to_copy);
       state->_send_body_offset += num_to_copy;
@@ -946,12 +956,15 @@ swoc::Rv<ssize_t> H2Session::write(HttpHeader const &hdr) {
     stream_state->_send_body_length = content.size();
     stream_state->_req = &hdr;
     stream_state->_wait_for_continue = hdr._send_continue;
-    stream_id = nghttp2_submit_request(this->_session, nullptr, hdrs, hdr_count, &data_prd, stream_state);
+    stream_id = nghttp2_submit_request(this->_session, nullptr, hdrs, hdr_count,
+                                       &data_prd, stream_state);
   } else {
-    stream_id = nghttp2_submit_request(this->_session, nullptr, hdrs, hdr_count, nullptr, stream_state);
+    stream_id = nghttp2_submit_request(this->_session, nullptr, hdrs, hdr_count,
+                                       nullptr, stream_state);
     stream_state->_stream_id = stream_id;
   }
-  zret.errata().diag(R"(Sent stream "{}" with {} headers)", stream_id, hdr_count);
+  zret.errata().diag(R"(Sent stream "{}" with {} headers)", stream_id,
+                     hdr_count);
 
   // Kick off the send logic to put the data on the wire
   send_callback(_session, nullptr, 0, 0, this);
@@ -962,9 +975,10 @@ swoc::Rv<ssize_t> H2Session::write(HttpHeader const &hdr) {
   return 1;
 }
 
-swoc::Errata H2Session::pack_headers(HttpHeader const &hdr, nghttp2_nv *&nv_hdr, int &hdr_count) {
+swoc::Errata H2Session::pack_headers(HttpHeader const &hdr, nghttp2_nv *&nv_hdr,
+                                     int &hdr_count) {
   swoc::Errata errata;
-  hdr_count = hdr._fields_rules._fields.size();
+  hdr_count = hdr._fields_rules->_fields.size();
 
   if (hdr._status) {
     hdr_count += 1;
@@ -976,26 +990,28 @@ swoc::Errata H2Session::pack_headers(HttpHeader const &hdr, nghttp2_nv *&nv_hdr,
     return errata;
   }
 
-  nv_hdr = reinterpret_cast<nghttp2_nv*>(malloc(sizeof(nghttp2_nv)*hdr_count));
+  nv_hdr =
+      reinterpret_cast<nghttp2_nv *>(malloc(sizeof(nghttp2_nv) * hdr_count));
   int offset = 0;
 
   if (hdr._status) {
-    // status is unsigned, not a TextView, but only 1 off case so just write the code here
+    // status is unsigned, not a TextView, but only 1 off case so just write the
+    // code here
     nghttp2_nv status_nv = {const_cast<uint8_t *>((uint8_t *)":status"),
-                            (uint8_t *)&hdr._status,
-                            sizeof(":status") - 1,
+                            (uint8_t *)&hdr._status, sizeof(":status") - 1,
                             sizeof((uint8_t *)&hdr._status) - 1,
                             NGHTTP2_NV_FLAG_NONE};
     nv_hdr[offset++] = status_nv;
   } else if (hdr._method) {
-    // TODO: add error checking and refactor and tolerance for non-required pseudo-headers
+    // TODO: add error checking and refactor and tolerance for non-required
+    // pseudo-headers
     nv_hdr[offset++] = tv_to_nv(":method", hdr._method);
     nv_hdr[offset++] = tv_to_nv(":scheme", hdr._scheme);
     nv_hdr[offset++] = tv_to_nv(":path", hdr._path);
     nv_hdr[offset++] = tv_to_nv(":authority", hdr._authority);
   }
 
-  hdr._fields_rules.add_fields_to_ngnva(nv_hdr + offset);
+  hdr._fields_rules->add_fields_to_ngnva(nv_hdr + offset);
 
   return errata;
 }
@@ -1022,21 +1038,22 @@ swoc::Errata H2Session::send_client_connection_header() {
   int rv;
 
   /* client 24 bytes magic string will be sent by nghttp2 library */
-  rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, iv,
-                               1);
+  rv = nghttp2_submit_settings(this->_session, NGHTTP2_FLAG_NONE, iv, 1);
   if (rv != 0) {
     errata.error(R"(Could not submit SETTINGS)");
   }
   return errata;
 }
 
-const unsigned char npn_str [] = { 2, 'h', '2', 7, 'h', 't', 't', 'p', '1', '.', '1' };
+const unsigned char npn_str[] = {2,   'h', '2', 7,   'h', 't',
+                                 't', 'p', '1', '.', '1'};
 int npn_len = 11;
 
-int alpn_select_next_proto_cb(SSL *ssl, const unsigned char **out, unsigned char *outlen,
-                              const unsigned char *in, unsigned int inlen, void *arg)
-{
-  if (SSL_select_next_proto(const_cast<unsigned char **>(out), outlen, npn_str, npn_len, in, inlen) == OPENSSL_NPN_NEGOTIATED) {
+int alpn_select_next_proto_cb(SSL *ssl, const unsigned char **out,
+                              unsigned char *outlen, const unsigned char *in,
+                              unsigned int inlen, void *arg) {
+  if (SSL_select_next_proto(const_cast<unsigned char **>(out), outlen, npn_str,
+                            npn_len, in, inlen) == OPENSSL_NPN_NEGOTIATED) {
     return SSL_TLSEXT_ERR_OK;
   }
   *out = nullptr;
@@ -1045,9 +1062,10 @@ int alpn_select_next_proto_cb(SSL *ssl, const unsigned char **out, unsigned char
 }
 
 int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
-                              const unsigned char *in, unsigned int inlen, void *arg)
-{
-  if (SSL_select_next_proto(out, outlen, npn_str, npn_len, in, inlen) == OPENSSL_NPN_NEGOTIATED) {
+                         const unsigned char *in, unsigned int inlen,
+                         void *arg) {
+  if (SSL_select_next_proto(out, outlen, npn_str, npn_len, in, inlen) ==
+      OPENSSL_NPN_NEGOTIATED) {
     return SSL_TLSEXT_ERR_OK;
   }
   *out = nullptr;
@@ -1055,11 +1073,11 @@ int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
   return SSL_TLSEXT_ERR_NOACK;
 }
 
-static int advertise_next_protocol_cb(SSL *ssl, const unsigned char **out, unsigned int *outlen, void *arg)
-{
-    *out = npn_str;
-    *outlen = npn_len;
-    return SSL_TLSEXT_ERR_OK;
+static int advertise_next_protocol_cb(SSL *ssl, const unsigned char **out,
+                                      unsigned int *outlen, void *arg) {
+  *out = npn_str;
+  *outlen = npn_len;
+  return SSL_TLSEXT_ERR_OK;
 }
 
 swoc::Errata H2Session::init(SSL_CTX *&svr_ctx, SSL_CTX *&clt_ctx) {
@@ -1071,8 +1089,8 @@ swoc::Errata H2Session::init(SSL_CTX *&svr_ctx, SSL_CTX *&clt_ctx) {
 
   // Initialize the protocol selection to include H2
   SSL_CTX_set_next_proto_select_cb(clt_ctx, select_next_proto_cb, NULL);
-  SSL_CTX_set_next_protos_advertised_cb(svr_ctx, advertise_next_protocol_cb, nullptr);
-
+  SSL_CTX_set_next_protos_advertised_cb(svr_ctx, advertise_next_protocol_cb,
+                                        nullptr);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // Set the protocols the client will advertise
@@ -1100,13 +1118,17 @@ swoc::Errata H2Session::session_init() {
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       this->callbacks, on_begin_headers_callback);
 
-//  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
-//  nghttp2_session_callbacks_set_recv_callback(callbacks, recv_callback);
+  //  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+  //  nghttp2_session_callbacks_set_recv_callback(callbacks, recv_callback);
 
-  nghttp2_session_callbacks_set_on_frame_send_callback(this->callbacks, on_frame_send_cb);
-  nghttp2_session_callbacks_set_on_frame_recv_callback(this->callbacks, on_frame_recv_cb);
-  nghttp2_session_callbacks_set_on_stream_close_callback(this->callbacks, on_stream_close_cb);
-  nghttp2_session_callbacks_set_on_data_chunk_recv_callback(this->callbacks, on_data_chunk_recv_cb);
+  nghttp2_session_callbacks_set_on_frame_send_callback(this->callbacks,
+                                                       on_frame_send_cb);
+  nghttp2_session_callbacks_set_on_frame_recv_callback(this->callbacks,
+                                                       on_frame_recv_cb);
+  nghttp2_session_callbacks_set_on_stream_close_callback(this->callbacks,
+                                                         on_stream_close_cb);
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
+      this->callbacks, on_data_chunk_recv_cb);
 
   nghttp2_session_client_new(&this->_session, this->callbacks, this);
 
@@ -1279,8 +1301,8 @@ AbsenceCheck::AbsenceCheck(swoc::TextView name) { _name = name; }
 bool EqualityCheck::test(swoc::TextView name, swoc::TextView value) const {
   swoc::Errata errata;
   if (name.empty())
-    errata.info(R"(Equals Violation: Absent. Key: "{}", Correct Value: "{}")", _name,
-         _value);
+    errata.info(R"(Equals Violation: Absent. Key: "{}", Correct Value: "{}")",
+                _name, _value);
   else if (strcmp(value, _value))
     errata.info(
         R"(Equals Violation: Different. Key: "{}", Correct Value: "{}", Actual Value: "{}")",
@@ -1305,7 +1327,8 @@ bool PresenceCheck::test(swoc::TextView name, swoc::TextView value) const {
 bool AbsenceCheck::test(swoc::TextView name, swoc::TextView value) const {
   swoc::Errata errata;
   if (!name.empty()) {
-    errata.info(R"(Absence Violation: Present. Key: "{}", Value: "{}")", _name, value);
+    errata.info(R"(Absence Violation: Present. Key: "{}", Value: "{}")", _name,
+                value);
     return false;
   }
   errata.info(R"(Absence Success: Key: "{}")", _name);
@@ -1330,8 +1353,8 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
     // Don't try chunked encoding later
     _content_size = 0;
     _content_length_p = true;
-  } else if (auto spot{_fields_rules._fields.find(FIELD_CONTENT_LENGTH)};
-             spot != _fields_rules._fields.end()) {
+  } else if (auto spot{_fields_rules->_fields.find(FIELD_CONTENT_LENGTH)};
+             spot != _fields_rules->_fields.end()) {
     cl = swoc::svtou(spot->second);
     _content_size = cl;
     _content_length_p = true;
@@ -1341,8 +1364,8 @@ swoc::Errata HttpHeader::update_content_length(swoc::TextView method) {
 
 swoc::Errata HttpHeader::update_transfer_encoding() {
   _chunked_p = false;
-  if (auto spot{_fields_rules._fields.find(FIELD_TRANSFER_ENCODING)};
-      spot != _fields_rules._fields.end()) {
+  if (auto spot{_fields_rules->_fields.find(FIELD_TRANSFER_ENCODING)};
+      spot != _fields_rules->_fields.end()) {
     if (0 == strcasecmp("chunked", spot->second)) {
       _chunked_p = true;
     }
@@ -1361,7 +1384,7 @@ swoc::Errata HttpHeader::serialize(swoc::BufferWriter &w) const {
     errata.error(R"(Unable to write header: no status nor method.)");
   }
 
-  for (auto const &[name, value] : _fields_rules._fields) {
+  for (auto const &[name, value] : _fields_rules->_fields) {
     w.write(name).write(": ").write(value).write(HTTP_EOL);
   }
   w.write(HTTP_EOL);
@@ -1369,13 +1392,14 @@ swoc::Errata HttpHeader::serialize(swoc::BufferWriter &w) const {
   return std::move(errata);
 }
 
-swoc::Errata HttpFields::parse_fields_node(YAML::Node const &node) {
+swoc::Errata HttpFields::parse_global_rules(YAML::Node const &node) {
   swoc::Errata errata;
 
   if (auto rules_node{node[YAML_FIELDS_KEY]}; rules_node) {
     if (rules_node.IsSequence()) {
       if (rules_node.size() > 0) {
-        auto result{this->parse_fields_rules(rules_node)};
+        auto result{
+            this->parse_fields_and_rules(rules_node, !ASSUME_EQUALITY_RULE)};
         if (!result.is_ok()) {
           errata.error("Failed to parse fields and rules at {}", node.Mark());
           errata.note(result);
@@ -1395,7 +1419,8 @@ swoc::Errata HttpFields::parse_fields_node(YAML::Node const &node) {
 }
 
 swoc::Errata
-HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node) {
+HttpFields::parse_fields_and_rules(YAML::Node const &fields_rules_node,
+                                   bool assume_equality_rule) {
   swoc::Errata errata;
 
   for (auto const &node : fields_rules_node) {
@@ -1411,8 +1436,11 @@ HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node) {
     }
     TextView name{HttpHeader::localize(node[YAML_RULE_NAME_KEY].Scalar())};
     _fields[name] = node[YAML_RULE_DATA_KEY].Scalar();
-    if (node_size == 3) {
-      // Contians a verification rule.
+    if (node_size == 2 && assume_equality_rule) {
+      _rules[name] =
+          RuleCheck::make_equality(name, _fields[name]);
+    } else if (node_size == 3) {
+      // Contans a verification rule.
       std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
       if (!tester) {
         errata.error("Field rule at {} does not have a valid flag ({})",
@@ -1427,12 +1455,11 @@ HttpFields::parse_fields_rules(YAML::Node const &fields_rules_node) {
 
 void HttpFields::add_fields_to_ngnva(nghttp2_nv *l) const {
   int offset = 0;
-  for (auto it = _fields.begin(); it != _fields.end(); ++it) {
-   l[offset++] = nghttp2_nv{const_cast<uint8_t *>((uint8_t *)it->first.data()),
-                const_cast<uint8_t *>((uint8_t *)it->second.data()),
-                it->first.length(),
-                it->second.length(),
-                NGHTTP2_NV_FLAG_NONE};
+  for (const auto &[key, value] : _fields) {
+    l[offset++] =
+        nghttp2_nv{const_cast<uint8_t *>((uint8_t *)key.data()),
+                   const_cast<uint8_t *>((uint8_t *)value.data()), key.length(),
+                   value.length(), NGHTTP2_NV_FLAG_NONE};
   }
 }
 
@@ -1523,7 +1550,8 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
     auto hdr_node{node[YAML_HDR_KEY]};
     if (hdr_node[YAML_FIELDS_KEY]) {
       auto field_list_node{hdr_node[YAML_FIELDS_KEY]};
-      swoc::Errata result = _fields_rules.parse_fields_rules(field_list_node);
+      swoc::Errata result = _fields_rules->parse_fields_and_rules(
+          field_list_node, _verify_strictly);
       if (result.is_ok()) {
         errata.note(this->update_content_length(_method));
         errata.note(this->update_transfer_encoding());
@@ -1568,8 +1596,9 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
         int new_content_length = content.size();
         if (_content_length_p) {
           if (_content_size != new_content_length) {
-            errata.diag(R"(Conflicting sizes for "Content-Length", using data value {} instead of header value {}.)",
-                        new_content_length, _content_size);
+            errata.diag(
+                R"(Conflicting sizes for "Content-Length", using data value {} instead of header value {}.)",
+                new_content_length, _content_size);
           }
         }
         _content_size = new_content_length;
@@ -1579,8 +1608,9 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
         // Cross check against previously read content-length header, if any
         if (_content_length_p) {
           if (_content_size != new_content_length) {
-            errata.diag(R"(Conflicting sizes for "Content-Length", using rule value {} instead of header value {}.)",
-                        new_content_length, _content_size);
+            errata.diag(
+                R"(Conflicting sizes for "Content-Length", using rule value {} instead of header value {}.)",
+                new_content_length, _content_size);
           }
         }
         _content_size = new_content_length;
@@ -1619,21 +1649,27 @@ bool HttpHeader::verify_headers(const HttpFields &rules_) const {
   // Remains false if no issue is observed
   // Setting true does not break loop because test() calls errata.diag()
   bool issue_exists = false;
-  for (const auto& rule: rules_._rules) {
+  for (const auto &rule : rules_._rules) {
     // Hashing uses strcasecmp internally
-    auto found_iter = _fields_rules._fields.find(rule.first);
-    if (found_iter == _fields_rules._fields.cend()) {
+    auto found_iter = _fields_rules->_fields.find(rule.first);
+    if (found_iter == _fields_rules->_fields.cend()) {
       if (!rule.second->test(swoc::TextView(), swoc::TextView())) {
         issue_exists = true;
       }
     } else {
       if (!rule.second->test(found_iter->first,
-                                   swoc::TextView(found_iter->second))) {
+                             swoc::TextView(found_iter->second))) {
         issue_exists = true;
       }
     }
   }
   return issue_exists;
+}
+
+HttpHeader::HttpHeader(bool verify_strictly)
+    : _verify_strictly{verify_strictly}
+    , _fields_rules{std::make_shared<HttpFields>()}
+{
 }
 
 swoc::TextView HttpHeader::localize(char const *c_str) {
@@ -1675,20 +1711,16 @@ swoc::TextView HttpHeader::localize(TextView text, Encoding enc) {
   return self_type::localize(text);
 }
 
-bool icompare_pred(unsigned char a, unsigned char b)
-{
-    return std::tolower(a) == std::tolower(b);
+bool icompare_pred(unsigned char a, unsigned char b) {
+  return std::tolower(a) == std::tolower(b);
 }
 
-bool icompare(swoc::TextView const& a, swoc::TextView const& b)
-{
-    if (a.length()==b.length()) {
-        return std::equal(b.begin(), b.end(),
-                           a.begin(), icompare_pred);
-    }
-    else {
-        return false;
-    }
+bool icompare(swoc::TextView const &a, swoc::TextView const &b) {
+  if (a.length() == b.length()) {
+    return std::equal(b.begin(), b.end(), a.begin(), icompare_pred);
+  } else {
+    return false;
+  }
 }
 
 swoc::Rv<HttpHeader::ParseResult>
@@ -1707,7 +1739,7 @@ HttpHeader::parse_request(swoc::TextView data) {
       _url = this->localize(
           first_line.ltrim_if(&isspace).take_prefix_if(&isspace));
       // Split out the path and scheme for http/2 required headers
-      std::size_t offset =  _url.find("://");
+      std::size_t offset = _url.find("://");
       if (offset != std::string::npos) {
         _scheme = _url.substr(offset);
       }
@@ -1725,7 +1757,7 @@ HttpHeader::parse_request(swoc::TextView data) {
         auto name{this->localize(value.take_prefix_at(':'))};
         value.trim_if(&isspace);
         if (name) {
-          _fields_rules._fields[name] = value;
+          _fields_rules->_fields[name] = value;
           if (icompare(name, "expect") && icompare(value, "100-continue")) {
             _send_continue = true;
           }
@@ -1768,7 +1800,7 @@ HttpHeader::parse_response(swoc::TextView data) {
         auto name{value.take_prefix_at(':')};
         value.trim_if(&isspace);
         if (name) {
-          _fields_rules._fields[name] = value;
+          _fields_rules->_fields[name] = value;
         } else {
           zret = PARSE_ERROR;
           zret.errata().error(R"(Malformed field "{}".)", field);
@@ -1788,8 +1820,8 @@ operator()(BufferWriter &w, const swoc::bwf::Spec &spec) const {
   TextView name{spec._name};
   if (name.starts_with_nocase(FIELD_PREFIX)) {
     name.remove_prefix(FIELD_PREFIX.size());
-    if (auto spot{_hdr._fields_rules._fields.find(name)};
-        spot != _hdr._fields_rules._fields.end()) {
+    if (auto spot{_hdr._fields_rules->_fields.find(name)};
+        spot != _hdr._fields_rules->_fields.end()) {
       bwformat(w, spec, spot->second);
     } else {
       bwformat(w, spec, "*N/A*");
@@ -1806,7 +1838,7 @@ namespace swoc {
 BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
                        HttpHeader const &h) {
   w.write("Headers:\n"sv);
-  for (auto const &[key, value] : h._fields_rules._fields) {
+  for (auto const &[key, value] : h._fields_rules->_fields) {
     w.print(R"(- "{}": "{}"{})", key, value, '\n');
   }
   return w;
@@ -1819,22 +1851,25 @@ BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
   // enough. The long string will be locally accurate. Clang requires the double
   // braces.
   static const std::array<std::string_view, 11> SHORT_NAME = {{
-    "SSL_ERROR_NONE: ",
-    "SSL_ERROR_SSL: ",
-    "SSL_ERROR_WANT_READ: ",
-    "SSL_ERROR_WANT_WRITE: ",
-    "SSL_ERROR_WANT_X509_LOOKUP: ",
-    "SSL_ERROR_SYSCALL: ",
-    "SSL_ERROR_ZERO_RETURN: ",
-    "SSL_ERROR_WANT_CONNECT: ",
-    "SSL_ERROR_WANT_ACCEPT: ",
-    "SSL_ERROR_WANT_ASYNC: ",
-    "SSL_ERROR_WANT_ASYNC_JOB: ",
+      "SSL_ERROR_NONE: ",
+      "SSL_ERROR_SSL: ",
+      "SSL_ERROR_WANT_READ: ",
+      "SSL_ERROR_WANT_WRITE: ",
+      "SSL_ERROR_WANT_X509_LOOKUP: ",
+      "SSL_ERROR_SYSCALL: ",
+      "SSL_ERROR_ZERO_RETURN: ",
+      "SSL_ERROR_WANT_CONNECT: ",
+      "SSL_ERROR_WANT_ACCEPT: ",
+      "SSL_ERROR_WANT_ASYNC: ",
+      "SSL_ERROR_WANT_ASYNC_JOB: ",
   }};
 
-  auto short_name = [](int n) { return 0 <= n && n < int(SHORT_NAME.size()) ? SHORT_NAME[n] : "Unknown: "sv; };
+  auto short_name = [](int n) {
+    return 0 <= n && n < int(SHORT_NAME.size()) ? SHORT_NAME[n] : "Unknown: "sv;
+  };
   static const bwf::Format number_fmt{"[{}]"sv}; // numeric value format.
-  if (spec.has_numeric_type()) {                 // if numeric type, print just the numeric part.
+  if (spec.has_numeric_type()) { // if numeric type, print just the numeric
+                                 // part.
     w.print(number_fmt, error._e);
   } else {
     w.write(short_name(error._e));
@@ -1858,7 +1893,7 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
       errata.error(R"(Error loading "{}": {})", path, ec);
     } else {
       YAML::Node root;
-      HttpFields global_fields_rules;
+      auto global_fields_rules = std::make_shared<HttpFields>();
       try {
         root = YAML::Load(content);
         yaml_merge(root);
@@ -1871,13 +1906,13 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
           if (meta_node[YAML_GLOBALS_KEY]) {
             auto globals_node{meta_node[YAML_GLOBALS_KEY]};
             // Path not passed to later calls than Load_Replay_File.
-            errata.note(global_fields_rules.parse_fields_node(globals_node));
+            errata.note(global_fields_rules->parse_global_rules(globals_node));
           }
         } else {
-          errata.info(R"(No meta node ("{}") at "{}":{}.)", YAML_META_KEY,
-                      path, root.Mark().line);
+          errata.info(R"(No meta node ("{}") at "{}":{}.)", YAML_META_KEY, path,
+                      root.Mark().line);
         }
-        handler.config = VerificationConfig{&global_fields_rules};
+        handler.global_config = VerificationConfig{global_fields_rules};
         if (root[YAML_SSN_KEY]) {
           auto ssn_list_node{root[YAML_SSN_KEY]};
           if (ssn_list_node.IsSequence()) {
@@ -1925,24 +1960,24 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                           txn_list_node.Mark(), ssn_node.Mark(), path);
                     }
                   } else {
-                    result.error(R"(Session at "{}":{} has no "{}" key.)",
-                                 path, ssn_node.Mark().line, YAML_TXN_KEY);
+                    result.error(R"(Session at "{}":{} has no "{}" key.)", path,
+                                 ssn_node.Mark().line, YAML_TXN_KEY);
                   }
                   result.note(handler.ssn_close());
                 }
                 errata.note(result);
               }
             } else {
-              errata.diag(R"(Session list at "{}":{} is an empty list.)",
-                          path, ssn_list_node.Mark().line);
+              errata.diag(R"(Session list at "{}":{} is an empty list.)", path,
+                          ssn_list_node.Mark().line);
             }
           } else {
             errata.error(R"("{}" value at "{}":{} is not a sequence.)",
                          YAML_SSN_KEY, path, ssn_list_node.Mark());
           }
         } else {
-          errata.error(R"(No sessions list ("{}") at "{}":{}.)",
-                       YAML_META_KEY, path, root.Mark().line);
+          errata.error(R"(No sessions list ("{}") at "{}":{}.)", YAML_META_KEY,
+                       path, root.Mark().line);
         }
       }
     }

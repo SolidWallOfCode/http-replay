@@ -26,6 +26,11 @@ inline BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
 
 using swoc::TextView;
 
+/** Whether to verify each response against the corresponding proxy-response
+ * in the yaml file.
+ */
+bool Use_Strict_Checking = false;
+
 std::mutex LoadMutex;
 
 std::list<Ssn *> Session_List;
@@ -45,6 +50,9 @@ std::deque<swoc::IPEndpoint> Target, Target_Https;
 bool Use_Proxy_Request_Directives = false;
 
 class ClientReplayFileHandler : public ReplayFileHandler {
+public:
+  ClientReplayFileHandler();
+
   swoc::Errata ssn_open(YAML::Node const &node) override;
   swoc::Errata txn_open(YAML::Node const &node) override;
   swoc::Errata client_request(YAML::Node const &node) override;
@@ -57,7 +65,8 @@ class ClientReplayFileHandler : public ReplayFileHandler {
   void txn_reset();
   void ssn_reset();
 
-  Ssn *_ssn;
+private:
+  Ssn *_ssn = nullptr;
   Txn _txn;
 };
 
@@ -66,9 +75,7 @@ bool Shutdown_Flag = false;
 class ClientThreadInfo : public ThreadInfo {
 public:
   Ssn *_ssn = nullptr;
-  bool data_ready() override {
-    return Shutdown_Flag || this->_ssn != nullptr;
-  }
+  bool data_ready() override { return Shutdown_Flag || this->_ssn != nullptr; }
 };
 
 class ClientThreadPool : public ThreadPool {
@@ -85,11 +92,14 @@ std::thread ClientThreadPool::make_thread(std::thread *t) {
       TF_Client, t); // move the temporary into the list element for permanence.
 }
 
+ClientReplayFileHandler::ClientReplayFileHandler()
+    : _txn{Use_Strict_Checking} {}
+
 void ClientReplayFileHandler::ssn_reset() { _ssn = nullptr; }
 
 void ClientReplayFileHandler::txn_reset() {
   _txn.~Txn();
-  new (&_txn) Txn;
+  new (&_txn) Txn{Use_Strict_Checking};
 }
 
 swoc::Errata ClientReplayFileHandler::ssn_open(YAML::Node const &node) {
@@ -192,7 +202,7 @@ swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
   if (!Use_Proxy_Request_Directives) {
     // We only expect proxy responses when we are behaving according to the
     // client-request directives and there is a proxy.
-    _txn._rsp._fields_rules = *config.txn_rules;
+    _txn._rsp._fields_rules = global_config.txn_rules;
     return _txn._rsp.load(node);
   }
   return {};
@@ -200,16 +210,17 @@ swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
 
 swoc::Errata ClientReplayFileHandler::server_response(YAML::Node const &node) {
   if (Use_Proxy_Request_Directives) {
-    // If we are behaving like the proxy, then replay-client is talking directly with the server and should
-    // expect the server's responses.
-    _txn._rsp._fields_rules = *config.txn_rules;
+    // If we are behaving like the proxy, then replay-client is talking directly
+    // with the server and should expect the server's responses.
+    _txn._rsp._fields_rules = global_config.txn_rules;
     return _txn._rsp.load(node);
   }
   return {};
 }
 
 swoc::Errata ClientReplayFileHandler::txn_close() {
-  _ssn->_txn.emplace_back(std::move(_txn));
+  _ssn->_transactions.emplace_back(std::move(_txn));
+  this->txn_reset();
   LoadMutex.unlock();
   return {};
 }
@@ -229,15 +240,17 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
   std::unique_ptr<Session> session;
   const swoc::IPEndpoint *real_target;
 
-  errata.diag(R"(Starting session "{}":{} protocol={}.)", ssn._path, ssn._line_no, ssn.is_h2 ? "h2" : (ssn.is_tls ? "https" : "http"));
+  errata.diag(R"(Starting session "{}":{} protocol={}.)", ssn._path,
+              ssn._line_no, ssn.is_h2 ? "h2" : (ssn.is_tls ? "https" : "http"));
 
-  if (ssn.is_h2) { 
+  if (ssn.is_h2) {
     if (Use_Proxy_Request_Directives) {
       // replay-server does not support HTTP/2 yet. We currently rely upon
       // TrafficServer to handle HTTP/2 on the client-side and talk HTTP/1 on
       // the server side. If there is no TrafficServer proxy, ignore the HTTP/2
       // traffic therefore.
-      errata.diag(R"(Ignoring HTTP/2 traffic in proxy mode, "{}":{})", ssn._path, ssn._line_no);
+      errata.diag(R"(Ignoring HTTP/2 traffic in proxy mode, "{}":{})",
+                  ssn._path, ssn._line_no);
       return errata;
     }
     session = std::make_unique<H2Session>();
@@ -254,7 +267,7 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
 
   errata.note(session->do_connect(real_target));
   if (errata.is_ok()) {
-    errata.note(session->run_transactions(ssn._txn, real_target));
+    errata.note(session->run_transactions(ssn._transactions, real_target));
   }
   if (!errata.is_ok()) {
     std::cerr << errata;
@@ -300,8 +313,10 @@ struct Engine {
   static constexpr swoc::TextView COMMAND_RUN_ARGS{
       "Arguments:\n"
       "\t<dir>: Directory containing replay files.\n"
-      "\t<upstream http>: hostname and port for http requests. Can be a comma seprated list\n"
-      "\t<upstream https>: hostname and port for https requests. Can be a comma separated list "};
+      "\t<upstream http>: hostname and port for http requests. Can be a comma "
+      "seprated list\n"
+      "\t<upstream https>: hostname and port for https requests. Can be a "
+      "comma separated list "};
   void command_run();
 
   /// Status code to return to the operating system.
@@ -321,7 +336,7 @@ void Engine::command_run() {
 
   if (args.size() < 3) {
     errata.error(R"(Not enough arguments for "{}" command.\n{})", COMMAND_RUN,
-                  COMMAND_RUN_ARGS);
+                 COMMAND_RUN_ARGS);
     status_code = 1;
     return;
   }
@@ -331,6 +346,10 @@ void Engine::command_run() {
     // proxy-request directives for its behavior. See the doxygen description
     // of this variable for the reasons for this.
     Use_Proxy_Request_Directives = true;
+  }
+
+  if (arguments.get("strict")) {
+    Use_Strict_Checking = true;
   }
 
   errata.note(resolve_ips(args[1], Target));
@@ -345,12 +364,13 @@ void Engine::command_run() {
   }
 
   errata.info(R"(Loading directory "{}".)", args[0]);
-  errata.note(Load_Replay_Directory(swoc::file::path{args[0]},
-              [](swoc::file::path const &file) -> swoc::Errata {
-                ClientReplayFileHandler handler;
-                return Load_Replay_File(file, handler);
-              },
-              10));
+  errata.note(
+      Load_Replay_Directory(swoc::file::path{args[0]},
+                            [](swoc::file::path const &file) -> swoc::Errata {
+                              ClientReplayFileHandler handler;
+                              return Load_Replay_File(file, handler);
+                            },
+                            10));
   if (!errata.is_ok()) {
     status_code = 1;
     return;
@@ -377,8 +397,8 @@ void Engine::command_run() {
   }
   for (auto *ssn : Session_List) {
     ssn->_start -= offset_time;
-    transaction_count += ssn->_txn.size();
-    for (auto const &txn : ssn->_txn) {
+    transaction_count += ssn->_transactions.size();
+    for (auto const &txn : ssn->_transactions) {
       max_content_length =
           std::max<size_t>(max_content_length, txn._req._content_size);
     }
@@ -400,8 +420,10 @@ void Engine::command_run() {
       rate_multiplier = (transaction_count * 1000000.0) /
                         (target * Session_List.back()->_start);
     }
-    errata.info("Rate multiplier: {}, transaction count: {}, time delta: {}, first time {}",
-        rate_multiplier, transaction_count, Session_List.back()->_start, offset_time);
+    errata.info("Rate multiplier: {}, transaction count: {}, time delta: {}, "
+                "first time {}",
+                rate_multiplier, transaction_count, Session_List.back()->_start,
+                offset_time);
   }
 
   if (repeat_arg.size() == 1) {
@@ -441,7 +463,7 @@ void Engine::command_run() {
         }
       }
       ++n_ssn;
-      n_txn += ssn->_txn.size();
+      n_txn += ssn->_transactions.size();
     }
   }
   // Wait until all threads are done
@@ -451,9 +473,9 @@ void Engine::command_run() {
   auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::high_resolution_clock::now() - start);
   errata.info("{} transactions in {} sessions (reuse {:.2f}) in {} ({:.3f} / "
-               "millisecond).",
-               n_txn, n_ssn, n_txn / static_cast<double>(n_ssn), delta,
-               n_txn / static_cast<double>(delta.count()));
+              "millisecond).",
+              n_txn, n_ssn, n_txn / static_cast<double>(n_ssn), delta,
+              n_txn / static_cast<double>(delta.count()));
 };
 
 int main(int argc, const char *argv[]) {
@@ -464,13 +486,20 @@ int main(int argc, const char *argv[]) {
 
   engine.parser
       .add_option("--verbose", "",
-          "Enable verbose output:"
-          "\n\terror: Only print errors."
-          "\n\twarn: Print warnings and errors."
-          "\n\tinfo: Print info messages in addition to warnings and errors. This is the default verbosity level."
-          "\n\tdiag: Print debug messages in addition to info, warnings, and errors,", "", 1, "info")
+                  "Enable verbose output:"
+                  "\n\terror: Only print errors."
+                  "\n\twarn: Print warnings and errors."
+                  "\n\tinfo: Print info messages in addition to warnings and "
+                  "errors. This is the default verbosity level."
+                  "\n\tdiag: Print debug messages in addition to info, "
+                  "warnings, and errors,",
+                  "", 1, "info")
       .add_option("--version", "-V", "Print version string")
-      .add_option("--help", "-h", "Print usage information");
+      .add_option("--help", "-h", "Print usage information")
+      .add_option("--strict", "-s",
+                  "Verify all proxy responses against the content in the yaml "
+                  "file as opposed to "
+                  "just those with verification elements.");
 
   engine.parser
       .add_command(Engine::COMMAND_RUN.data(), Engine::COMMAND_RUN_ARGS.data(),
@@ -488,7 +517,8 @@ int main(int argc, const char *argv[]) {
   engine.arguments = engine.parser.parse(argv);
 
   std::string verbosity = "info";
-  if (const auto verbose_argument{engine.arguments.get("verbose")}; verbose_argument) {
+  if (const auto verbose_argument{engine.arguments.get("verbose")};
+      verbose_argument) {
     verbosity = verbose_argument.value();
   }
   if (!configure_logging(verbosity)) {

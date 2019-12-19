@@ -28,11 +28,11 @@
 #include <condition_variable>
 #include <deque>
 #include <memory>
+#include <nghttp2/nghttp2.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <thread>
 #include <unistd.h>
-#include <nghttp2/nghttp2.h>
 
 #include "yaml-cpp/yaml.h"
 
@@ -118,9 +118,10 @@ BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
 
 namespace bwf {
 /** Format wrapper for @c errno.
- * This stores a copy of the argument or @c errno if an argument isn't provided. The output
- * is then formatted with the short, long, and numeric value of @c errno. If the format specifier
- * is type 'd' then just the numeric value is printed.
+ * This stores a copy of the argument or @c errno if an argument isn't provided.
+ * The output is then formatted with the short, long, and numeric value of @c
+ * errno. If the format specifier is type 'd' then just the numeric value is
+ * printed.
  */
 struct SSLError {
   unsigned long _e;
@@ -130,8 +131,55 @@ struct SSLError {
 
 BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
                        bwf::SSLError const &error);
-}
+} // namespace swoc
 
+/**
+ * Field Verification
+ *
+ * The objects below implement header verification. Header verification is used
+ * by the replay-server to verify header expectations for the requests coming
+ * from the proxy. Correspondingly, header verification is also used by the
+ * replay-client to verify header expectations for the responses coming from
+ * the proxy.
+ *
+ * A RuleCheck is the base class for the three types of implemented
+ * verification mechanisms:
+ *
+ *   1. Absence: an HTTP header with the given name should not exist in the
+ *   request or response being verified.
+ *
+ *   2. Presence: an HTTP header with the given name should exist in the
+ *   request or response being verified.
+ *
+ *   3. Equality: an HTTP header with the given name and value should exist
+ *   in the request or response being verified.
+ *
+ * Thus rules are the expectations that are provided to http-replay concerning
+ * transactions coming out of the proxy. In the absence of a rule, no
+ * verification is done.
+ *
+ * Rules are applied in one of three ways, presented here in order from broad
+ * to specific:
+ *
+ *   1. Via the --strict command line argument. This tells http-replay to treat
+ *   each proxy request header field without a verification rule as if it had
+ *   an equality verification value.
+ *
+ *   2. Via the YAML_META_KEY:YAML_GLOBALS_KEY nodes. This specifies fields and
+ *   rules expected across all transactions in the json file.
+ *
+ *   3. Via field rules in field nodes on a per-transaction basis.
+ *
+ * Notice that each of these mechanisms can be overridden by a more specific
+ * specification. Thus --strict sets an equality expectation on all proxy
+ * request and response header fields. If, however, a node has an absence
+ * rule for a field value, then the absence rule, being more specific, will
+ * override the broader equality expectation set by --strict.
+ *
+ * As an aside, in addition to this field verification logic,
+ * Session::run_transaction verifies that the proxy returns the expected
+ * response status code as recorded in the replay file.
+ */
 struct Hash {
   swoc::Hash64FNV1a::value_type operator()(swoc::TextView view) const {
     return swoc::Hash64FNV1a{}.hash_immediate(
@@ -303,25 +351,28 @@ public:
   Fields _fields; ///< Maps field names to values.
 
   /** Parse a node holding as an attribute an individual field array of rules.
-   * Used instead of parse_rules on nodes like global_rules_node. Calls
-   * parse_rules.
+   * Used instead of parse_fields_and_rules on nodes like global_rules_node.
+   * Calls parse_rules.
    *
-   * @param node YAML Node with Fields attribute holding array of rules
+   * @param[in] node YAML Node with Fields attribute holding array of rules
    * @return swoc::Errata holding any encountered errors
    */
-  swoc::Errata parse_fields_node(YAML::Node const &node);
+  swoc::Errata parse_global_rules(YAML::Node const &node);
 
   /** Parse an individual array of fields and rules.
    *
-   * @param node Array of fields and rules in YAML node format
+   * @param[in] node Array of fields and rules in YAML node format
+   * @param[in] assume_equality_rule Whether to assume an equality rule in the
+   *   absence of another verification rule.
    * @return swoc::Errata holding any encountered errors
    */
-  swoc::Errata parse_fields_rules(YAML::Node const &node);
+  swoc::Errata parse_fields_and_rules(YAML::Node const &node,
+                                      bool assume_equality_rule);
+  static constexpr bool ASSUME_EQUALITY_RULE = true;
 
   /** Convert _fields into nghttp2_nv and add them to the vector provided
    *
-   * @param [in] l vector of nghttp2_nv structs
-   * @return None
+   * @param[out] l vector of nghttp2_nv structs to populate from _fields.
    */
   void add_fields_to_ngnva(nghttp2_nv *l) const;
 
@@ -329,7 +380,7 @@ public:
 };
 
 struct VerificationConfig {
-  HttpFields *txn_rules;
+  std::shared_ptr<HttpFields> txn_rules;
 };
 
 class HttpHeader {
@@ -343,7 +394,7 @@ class HttpHeader {
 public:
   /// Parsing results.
   enum ParseResult {
-    PARSE_OK,        ///< Parse finished sucessfully.
+    PARSE_OK,        ///< Parse finished successfully.
     PARSE_ERROR,     ///< Invalid data.
     PARSE_INCOMPLETE ///< Parsing not complete.
   };
@@ -357,7 +408,8 @@ public:
   /// Mark which status codes have no content by default.
   static std::bitset<600> STATUS_NO_CONTENT;
 
-  HttpHeader() = default;
+  /// @param[in] verify_strictly Whether strict verification is enabled.
+  HttpHeader(bool verify_strictly = false);
   HttpHeader(self_type const &) = delete;
   HttpHeader(self_type &&that) = default;
   self_type &operator=(self_type &&that) = default;
@@ -389,20 +441,19 @@ public:
   /// independently during load.
   char const *_content_data = nullptr; ///< Literal data for the content.
   size_t _content_size = 0;            ///< Length of the content.
-  TextView _method; // Required
+  TextView _method;                    // Required
   TextView _http_version;
   TextView _url;
 
   bool _send_continue = false;
 
   // H2 pseudo-headers
-  TextView _scheme; // Required for method
+  TextView _scheme;    // Required for method
   TextView _authority; // Required for method
-  TextView _path; // Required for method
-
+  TextView _path;      // Required for method
 
   /// Maps field names to functors (rules) and field names to values (fields)
-  HttpFields _fields_rules;
+  std::shared_ptr<HttpFields> _fields_rules;
 
   /// Body is chunked.
   unsigned _chunked_p : 1;
@@ -480,15 +531,19 @@ protected:
 
   static NameSet _names;
   static swoc::MemArena _arena;
+
+  bool _verify_strictly;
 };
 
 struct Txn {
+  Txn(bool verify_strictly) : _req{verify_strictly}, _rsp{verify_strictly} {}
+
   HttpHeader _req; ///< Request to send.
   HttpHeader _rsp; ///< Rules for response to expect.
 };
 
 struct Ssn {
-  std::list<Txn> _txn;
+  std::list<Txn> _transactions;
   swoc::file::path _path;
   unsigned _line_no = 0;
   uint64_t _start; ///< Start time in HR ticks.
@@ -498,8 +553,8 @@ struct Ssn {
 };
 
 /** A session reader.
- * This is essentially a wrapper around a socket to support use of @c epoll on the
- * socket. The goal is to enable a read operation that waits for data but
+ * This is essentially a wrapper around a socket to support use of @c epoll on
+ * the socket. The goal is to enable a read operation that waits for data but
  * returns as soon as any data is available.
  */
 class Session {
@@ -558,7 +613,8 @@ public:
    *
    * @return The number of bytes drained and an errata with messaging.
    */
-  virtual swoc::Rv<size_t> drain_body(HttpHeader const &hdr, swoc::TextView initial);
+  virtual swoc::Rv<size_t> drain_body(HttpHeader const &hdr,
+                                      swoc::TextView initial);
 
   virtual swoc::Errata do_connect(const swoc::IPEndpoint *real_target);
 
@@ -580,7 +636,8 @@ public:
 
   /** Write the number of body bytes as specified by hdr.
    *
-   * @param[in] hdr The header to inspect to determine how many body bytes to write.
+   * @param[in] hdr The header to inspect to determine how many body bytes to
+   * write.
    *
    * @return The number of bytes written and an errata with any messaging.
    */
@@ -594,7 +651,8 @@ public:
 
   static swoc::Errata init();
 
-  virtual swoc::Errata run_transactions(const std::list<Txn> &txn, const swoc::IPEndpoint *real_target);
+  virtual swoc::Errata run_transactions(const std::list<Txn> &txn,
+                                        const swoc::IPEndpoint *real_target);
   virtual swoc::Errata run_transaction(const Txn &txn);
 
 private:
@@ -646,7 +704,9 @@ class H2StreamState {
 public:
   H2StreamState() {}
   H2StreamState(int32_t stream_id) : _stream_id(stream_id) {}
-  H2StreamState(int32_t stream_id, char *send_body, int send_body_length) : _stream_id(stream_id), _send_body(send_body), _send_body_length(send_body_length) {}
+  H2StreamState(int32_t stream_id, char *send_body, int send_body_length)
+      : _stream_id(stream_id), _send_body(send_body),
+        _send_body_length(send_body_length) {}
   int32_t _stream_id = 0;
   int _data_to_recv = 0;
   size_t _send_body_offset = 0;
@@ -673,14 +733,15 @@ public:
   }
   swoc::Errata session_init();
   swoc::Errata send_client_connection_header();
-  swoc::Errata run_transactions(const std::list<Txn> &txn, const swoc::IPEndpoint *real_target) override;
+  swoc::Errata run_transactions(const std::list<Txn> &txn,
+                                const swoc::IPEndpoint *real_target) override;
   swoc::Errata run_transaction(const Txn &txn) override;
 
   nghttp2_session *get_session() { return _session; }
 
   std::map<int32_t, H2StreamState *> _stream_map;
 
-protected: 
+protected:
   nghttp2_session *_session;
   nghttp2_session_callbacks *callbacks;
 
@@ -688,9 +749,9 @@ protected:
   static SSL_CTX *h2_client_ctx;
 
 private:
-  swoc::Errata pack_headers(HttpHeader const &hdr, nghttp2_nv *&nv_hdr, int &hdr_count);
+  swoc::Errata pack_headers(HttpHeader const &hdr, nghttp2_nv *&nv_hdr,
+                            int &hdr_count);
   nghttp2_nv tv_to_nv(const char *name, swoc::TextView v);
-
 };
 
 class ChunkCodex {
@@ -764,7 +825,11 @@ inline BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
  */
 class ReplayFileHandler {
 public:
-  VerificationConfig config;
+  ReplayFileHandler() = default;
+  virtual ~ReplayFileHandler() = default;
+
+  /** The rules associated with YAML_GLOBALS_KEY. */
+  VerificationConfig global_config;
 
   virtual swoc::Errata file_open(swoc::file::path const &path) {
     _path = path.string();
@@ -839,4 +904,3 @@ protected:
   std::mutex _threadPoolMutex;
   const int max_threads = 2000;
 };
-
