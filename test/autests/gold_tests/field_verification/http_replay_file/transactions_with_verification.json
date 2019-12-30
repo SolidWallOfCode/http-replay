@@ -1,0 +1,295 @@
+{
+    "meta": {
+        "version": "1.0"
+    },
+    "sessions": [
+        {
+            "protocol": [
+                "tcp",
+                "ipv4"
+            ],
+            "connection-time": 1552705896896003926,
+            "transactions": [
+                {
+                    "uuid": "cb9b4e94-5d42-43d4-8545-320033298ba2-226381119",
+                    "start-time": 1552705896896042340,
+                    "client-request": {
+                        "version": "1.1",
+                        "scheme": "http",
+                        "method": "POST",
+                        "url": "http://data.real.flurry.com/client.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 399
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Length",
+                                    "399"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com"
+                                ],
+                                [
+                                    "Connection",
+                                    "Keep-Alive"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "bvr4v55e8oqb8"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-226381119"
+                                ],
+                                [
+                                    "X-Test-Case",
+                                    "CASEmatters"
+                                ],
+                                [
+                                    "X-Proxy-Directive",
+                                    "Delete=%<X-CDN%> Insert=%<Host: test.flurry.com%> Insert=%<YahooRemoteIP: 10.10.10.4%> Insert=%<X-Test-Case: caseMATTERS%>"
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-request": {
+                        "version": "1.1",
+                        "scheme": "",
+                        "method": "POST",
+                        "url": "/proxy.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 399
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Length",
+                                    "399",
+                                    "present"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream",
+                                    "absent"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com",
+                                    "equal"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry",
+                                    "absent"
+                                ],
+                                [
+                                    "Client-ip",
+                                    "187.188.63.1",
+                                    "present"
+                                ],
+                                [
+                                    "X-Forwarded-For",
+                                    "187.188.63.1"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
+                                ],
+                                [
+                                    "YahooRemoteIP",
+                                    "187.188.63.1",
+                                    "present"
+                                ],
+                                [
+                                    "YahooRemoteIPSig",
+                                    "Oxaw4vx6tU8AVMSeoyMT7g--~D"
+                                ],
+                                [
+                                    "Y-RA",
+                                    "187.188.63.1"
+                                ],
+                                [
+                                    "Y-RP",
+                                    "2603"
+                                ],
+                                [
+                                    "Y-RS",
+                                    "oR2Z_Wl9jxibLbJLHbVjGg--~B"
+                                ],
+                                [
+                                    "Y-Path",
+                                    "f=187.188.63.1:2603;b=69.147.86.249:80;z=bDMSujd7xQCdkxwRnxuySw--~B"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "bvr4v55e8oqb8",
+                                    "equal"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-226381119"
+                                ],
+                                [
+                                    "X-Test-Case",
+                                    "CASEmatters",
+                                    "equal"
+                                ]
+                            ]
+                        }
+                    },
+                    "server-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 0
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Sat, 16 Mar 2019 03:11:36 GMT"
+                                ],
+                                [
+                                    "X-TestHeader",
+                                    "from_server_response"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "0"
+                                ],
+                                [
+                                    "Age",
+                                    "0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus17.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry8.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "DENY"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff"
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "strict-origin-when-cross-origin"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ],
+                                [
+                                    "X-Proxy-Directive",
+                                    "Delete=%<X-Content-Type-Options%> Insert=%<Age: 4%>"
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 0
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Sat, 16 Mar 2019 03:11:36 GMT",
+                                    "equal"
+                                ],
+                                [
+                                    "X-TestHeader",
+                                    "from_proxy_response",
+                                    "equal"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "0",
+                                    "present"
+                                ],
+                                [
+                                    "Age",
+                                    "0",
+                                    "present"
+                                ],
+                                [
+                                    "X-Request-ID",
+                                    "4",
+                                    "present"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus17.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry8.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "DENY"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff",
+                                    "absent"
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block",
+                                    "absent"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "strict-origin-when-cross-origin"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ]
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,139 @@
+'''
+'''
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+from __future__ import print_function
+import os
+
+
+def create_address_argument(ports):
+    """
+    >>> create_address_argument([8080, 8081])
+    '"127.0.0.1:8080,127.0.0.1:8081"'
+    """
+    is_first = True
+    argument = '"'
+    for port in ports:
+        if is_first:
+            is_first = False
+        else:
+            argument += ','
+        # We'll have a trailing ',', but replay-server handles that fine.
+        argument += "127.0.0.1:{}".format(port)
+    argument += '"'
+    return argument
+
+
+def _configure_client(obj, process, name, replay_dir,
+                      http_ports=[8080], https_ports=[4443], other_args=''):
+    """
+    Configure the process for running the replay-client.
+
+    Args:
+        obj: An object that has a RunDirectory attribute.
+
+        process: (Process) The test process to configure for replay-client.
+
+        See MakeClientProcess.
+    """
+
+    # Create the directory we will setup for the replay binaries to run under.
+    client_dir = os.path.join(obj.RunDirectory, name)
+
+    # Create a link of the binary to the rundir and set up the PATH variable.
+    # This will be the replay-client that gets run.
+    bin_dir = 'bin'
+    process.Env['CLIENT_BIN_PATH'] = bin_dir
+    bin_path = os.path.join(client_dir, bin_dir)
+    process.Env['PATH'] = bin_path + os.pathsep + process.ComposeEnv()['PATH']
+    process.Setup.Copy(process.ComposeVariables().REPLAY_BIN, bin_path, CopyLogic.SoftFiles)
+
+    # Configure the replay-client command line arguments.
+    command = "replay-client run "
+    if replay_dir:
+        # Create a copy of the replay directory in the run directory.
+        run_replay_dir = os.path.join(client_dir, os.path.basename(replay_dir))
+        process.Setup.Copy(replay_dir, run_replay_dir, CopyLogic.SoftFiles)
+        command += " {} ".format(run_replay_dir)
+
+    if http_ports:
+        command += create_address_argument(http_ports)
+        command += " "
+
+    if https_ports:
+        command += create_address_argument(https_ports)
+        command += " "
+
+    if other_args:
+        command += " {}".format(other_args)
+
+    process.Command = command
+    process.ReturnCode = 0
+
+
+def MakeClientProcess(test, name, replay_dir,
+                      http_ports=[8080], https_ports=[4443], other_args=''):
+    """
+    Create a replay-client process.
+
+    Args:
+        test: (Test) The Test object being updated with the client process.
+
+        name: (str) The name to apply to this particular replay-client instance.
+            Individual replay-client processes must have unique names to
+            distinguish between them.
+
+        replay_dir: (path) The directory containing the replay files for the
+            client to run with.
+
+        http_ports: (list of ints) The set of HTTP ports to connect on.
+
+        https_ports: (list of ints) The set of HTTPS ports to connect on.
+
+        other_args: (str) Any other arbitrary options to pass to replay-client.
+
+    Returns:
+        A replay-client process.
+    """
+    client = test.Processes.Process(name)
+    _configure_client(test, client, name, replay_dir, http_ports, https_ports, other_args)
+    return client
+
+
+def AddClientProcess(run, name, replay_dir,
+                     http_ports=[8080], https_ports=[4443], other_args=''):
+    """
+    Set the Default process of the test run to a replay-client Process.
+
+    Args:
+        run: (TestRun) The test run to which the client process is added.
+
+        For all other arguments, see MakeServerProcess.
+
+    Returns:
+        The newly constructed replay-client for the test run, which is also the
+        Default Process of the test run.
+    """
+
+    p = run.Processes.Default
+    _configure_client(run, p, name, replay_dir, http_ports, https_ports, other_args)
+    return p
+
+
+##########################################################################
+ExtendTest(MakeClientProcess, name="MakeClientProcess")
+ExtendTestRun(AddClientProcess, name="AddClientProcess")

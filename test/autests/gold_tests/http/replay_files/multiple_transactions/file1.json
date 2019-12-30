@@ -1,0 +1,1185 @@
+{
+    "meta": {
+        "version": "1.0"
+    },
+    "sessions": [
+        {
+            "protocol": [
+                "tcp",
+                "ipv4"
+            ],
+            "connection-time": 1552689640420177239,
+            "transactions": [
+                {
+                    "uuid": "cb9b4e94-5d42-43d4-8545-320033298ba2-191477206",
+                    "start-time": 1552689640489111975,
+                    "client-request": {
+                        "version": "1.1",
+                        "scheme": "http",
+                        "method": "POST",
+                        "url": "http://data.real.flurry.com/aap.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 402
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "User-Agent",
+                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Moto G (5) Plus Build/NPNS25.137-92-14)"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com"
+                                ],
+                                [
+                                    "Connection",
+                                    "Keep-Alive"
+                                ],
+                                [
+                                    "Accept-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "402"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Name",
+                                    "android"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Version",
+                                    "7.0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Device-Type",
+                                    "smartphone"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Robot",
+                                    "0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Override-Device-Type",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Classify-Method",
+                                    "from device detection"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Time-Cost",
+                                    "2"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Marketing-Name",
+                                    "Moto G5 Plus"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "6o2nn1te8oaf8"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-191477206"
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-request": {
+                        "version": "1.1",
+                        "scheme": "",
+                        "method": "POST",
+                        "url": "/aap.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 402
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "User-Agent",
+                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Moto G (5) Plus Build/NPNS25.137-92-14)"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com"
+                                ],
+                                [
+                                    "Accept-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "402"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Name",
+                                    "android"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Version",
+                                    "7.0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Device-Type",
+                                    "smartphone"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Robot",
+                                    "0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Override-Device-Type",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Classify-Method",
+                                    "from device detection"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Time-Cost",
+                                    "2"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Marketing-Name",
+                                    "Moto G5 Plus"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry"
+                                ],
+                                [
+                                    "Client-ip",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "X-Forwarded-For",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
+                                ],
+                                [
+                                    "YahooRemoteIP",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "YahooRemoteIPSig",
+                                    "_wo6nN0XlO6c0NVNTlmoIw--~D"
+                                ],
+                                [
+                                    "Y-RA",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "Y-RP",
+                                    "55669"
+                                ],
+                                [
+                                    "Y-RS",
+                                    "p6.KO7zVzHPAG3E4hec9Zg--~B"
+                                ],
+                                [
+                                    "Y-Path",
+                                    "f=187.224.9.0:55669;b=69.147.86.249:443;s=1;z=xxUNDdVw7Mhit2QoFG3VzA--~B"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "6o2nn1te8oaf8"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-191477206"
+                                ]
+                            ]
+                        }
+                    },
+                    "server-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 20
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Fri, 15 Mar 2019 22:40:40 GMT"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Age",
+                                    "0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus101.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry67.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "SAMEORIGIN"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff"
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "no-referrer-when-downgrade"
+                                ],
+                                [
+                                    "Content-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Vary",
+                                    "Accept-Encoding"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "20"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ],
+                                [
+                                    "Strict-Transport-Security",
+                                    "max-age=31536000"
+                                ],
+                                [
+                                    "Expect-CT",
+                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 20
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Fri, 15 Mar 2019 22:40:40 GMT"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Age",
+                                    "0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus101.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry67.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "SAMEORIGIN"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "no-referrer-when-downgrade"
+                                ],
+                                [
+                                    "Content-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Vary",
+                                    "Accept-Encoding"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "20"
+                                ],
+                                [
+                                    "Strict-Transport-Security",
+                                    "max-age=15552000"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ],
+                                [
+                                    "Expect-CT",
+                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff"
+                                ],
+                                [
+                                    "Public-Key-Pins-Report-Only",
+                                    "max-age=2592000; pin-sha256=\"2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY=\"; pin-sha256=\"I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o=\"; pin-sha256=\"Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw=\"; pin-sha256=\"WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=\"; pin-sha256=\"i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=\"; pin-sha256=\"r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=\"; pin-sha256=\"uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=\"; pin-sha256=\"dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A=\"; includeSubdomains; report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only\""
+                                ]
+                            ]
+                        }
+                    }
+                },
+                {
+                    "uuid": "cb9b4e94-5d42-43d4-8545-320033298ba2-191478385",
+                    "start-time": 1552689640982485602,
+                    "client-request": {
+                        "version": "1.1",
+                        "scheme": "http",
+                        "method": "POST",
+                        "url": "http://data.real.flurry.com/aap.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 14537
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "User-Agent",
+                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Moto G (5) Plus Build/NPNS25.137-92-14)"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com"
+                                ],
+                                [
+                                    "Connection",
+                                    "Keep-Alive"
+                                ],
+                                [
+                                    "Accept-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "14537"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Name",
+                                    "android"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Version",
+                                    "7.0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Device-Type",
+                                    "smartphone"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Robot",
+                                    "0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Override-Device-Type",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Classify-Method",
+                                    "from device detection"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Time-Cost",
+                                    "2"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Marketing-Name",
+                                    "Moto G5 Plus"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "4roaud9e8oaf8"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-191478385"
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-request": {
+                        "version": "1.1",
+                        "scheme": "",
+                        "method": "POST",
+                        "url": "/aap.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 14537
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "User-Agent",
+                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Moto G (5) Plus Build/NPNS25.137-92-14)"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com"
+                                ],
+                                [
+                                    "Accept-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "14537"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Name",
+                                    "android"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Version",
+                                    "7.0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Device-Type",
+                                    "smartphone"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Robot",
+                                    "0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Override-Device-Type",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Classify-Method",
+                                    "from device detection"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Time-Cost",
+                                    "2"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Marketing-Name",
+                                    "Moto G5 Plus"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry"
+                                ],
+                                [
+                                    "Client-ip",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "X-Forwarded-For",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
+                                ],
+                                [
+                                    "YahooRemoteIP",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "YahooRemoteIPSig",
+                                    "_wo6nN0XlO6c0NVNTlmoIw--~D"
+                                ],
+                                [
+                                    "Y-RA",
+                                    "187.224.9.0"
+                                ],
+                                [
+                                    "Y-RP",
+                                    "55669"
+                                ],
+                                [
+                                    "Y-RS",
+                                    "p6.KO7zVzHPAG3E4hec9Zg--~B"
+                                ],
+                                [
+                                    "Y-Path",
+                                    "f=187.224.9.0:55669;b=69.147.86.249:443;s=1;z=xxUNDdVw7Mhit2QoFG3VzA--~B"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "4roaud9e8oaf8"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-191478385"
+                                ]
+                            ]
+                        }
+                    },
+                    "server-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 20
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Fri, 15 Mar 2019 22:40:41 GMT"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Age",
+                                    "0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus26.prod.media.gq1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry30.prod.media.gq1.yahoo.com (ApacheTrafficServer [c sSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "SAMEORIGIN"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff"
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "no-referrer-when-downgrade"
+                                ],
+                                [
+                                    "Content-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Vary",
+                                    "Accept-Encoding"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "20"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ],
+                                [
+                                    "Strict-Transport-Security",
+                                    "max-age=31536000"
+                                ],
+                                [
+                                    "Expect-CT",
+                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 20
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Fri, 15 Mar 2019 22:40:41 GMT"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Age",
+                                    "1"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus26.prod.media.gq1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry30.prod.media.gq1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "SAMEORIGIN"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "no-referrer-when-downgrade"
+                                ],
+                                [
+                                    "Content-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Vary",
+                                    "Accept-Encoding"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "20"
+                                ],
+                                [
+                                    "Strict-Transport-Security",
+                                    "max-age=15552000"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ],
+                                [
+                                    "Expect-CT",
+                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff"
+                                ],
+                                [
+                                    "Public-Key-Pins-Report-Only",
+                                    "max-age=2592000; pin-sha256=\"2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY=\"; pin-sha256=\"I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o=\"; pin-sha256=\"Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw=\"; pin-sha256=\"WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=\"; pin-sha256=\"i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=\"; pin-sha256=\"r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=\"; pin-sha256=\"uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=\"; pin-sha256=\"dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A=\"; includeSubdomains; report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only\""
+                                ]
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "protocol": [
+                "tcp",
+                "ipv4"
+            ],
+            "connection-time": 1552705858733650009,
+            "transactions": [
+                {
+                    "uuid": "cb9b4e94-5d42-43d4-8545-320033298ba2-226300312",
+                    "start-time": 1552705858886635089,
+                    "client-request": {
+                        "version": "1.1",
+                        "scheme": "http",
+                        "method": "POST",
+                        "url": "http://data.real.flurry.com/aap.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 2083
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "X-Flurry-Sdk-Clock",
+                                    "1552705855397"
+                                ],
+                                [
+                                    "User-Agent",
+                                    "Dalvik/2.1.0 (Linux; U; Android 7.1.1; Moto E (4) Plus Build/NCRS26.58-44-6)"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com"
+                                ],
+                                [
+                                    "Connection",
+                                    "Keep-Alive"
+                                ],
+                                [
+                                    "Accept-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "2083"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Name",
+                                    "android"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Version",
+                                    "7.1"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Device-Type",
+                                    "smartphone"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Robot",
+                                    "0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Override-Device-Type",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Classify-Method",
+                                    "from device detection"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Time-Cost",
+                                    "2"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Marketing-Name",
+                                    "Moto E4"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "75hnfnpe8oqa2"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-226300312"
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-request": {
+                        "version": "1.1",
+                        "scheme": "",
+                        "method": "POST",
+                        "url": "/aap.do",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 2083
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "X-Flurry-Sdk-Clock",
+                                    "1552705855397"
+                                ],
+                                [
+                                    "User-Agent",
+                                    "Dalvik/2.1.0 (Linux; U; Android 7.1.1; Moto E (4) Plus Build/NCRS26.58-44-6)"
+                                ],
+                                [
+                                    "Host",
+                                    "data.flurry.com"
+                                ],
+                                [
+                                    "Accept-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "2083"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Name",
+                                    "android"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Os-Version",
+                                    "7.1"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Browser-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Name",
+                                    "unknown"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-App-Version",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Device-Type",
+                                    "smartphone"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Robot",
+                                    "0"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Override-Device-Type",
+                                    ""
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Classify-Method",
+                                    "from device detection"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Time-Cost",
+                                    "2"
+                                ],
+                                [
+                                    "X-Yahoo-Dc-Marketing-Name",
+                                    "Moto E4"
+                                ],
+                                [
+                                    "X-CDN",
+                                    "YCPI-flurry"
+                                ],
+                                [
+                                    "Client-ip",
+                                    "187.161.146.96"
+                                ],
+                                [
+                                    "X-Forwarded-For",
+                                    "187.161.146.96"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
+                                ],
+                                [
+                                    "YahooRemoteIP",
+                                    "187.161.146.96"
+                                ],
+                                [
+                                    "YahooRemoteIPSig",
+                                    "0uDJHdJap0ODxZcO6payBg--~D"
+                                ],
+                                [
+                                    "Y-RA",
+                                    "187.161.146.96"
+                                ],
+                                [
+                                    "Y-RP",
+                                    "26939"
+                                ],
+                                [
+                                    "Y-RS",
+                                    "xSiJ_lp1UzFHS2._Z0EKgg--~B"
+                                ],
+                                [
+                                    "Y-Path",
+                                    "f=187.161.146.96:26939;b=69.147.86.249:443;s=1;z=v__GNZojvfYyBev9zIOuVw--~B"
+                                ],
+                                [
+                                    "Y-RID",
+                                    "75hnfnpe8oqa2"
+                                ],
+                                [
+                                    "uuid",
+                                    "cb9b4e94-5d42-43d4-8545-320033298ba2-226300312"
+                                ]
+                            ]
+                        }
+                    },
+                    "server-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 20
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Sat, 16 Mar 2019 03:10:58 GMT"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Age",
+                                    "0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus213.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry14.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "SAMEORIGIN"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff"
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "no-referrer-when-downgrade"
+                                ],
+                                [
+                                    "Content-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Vary",
+                                    "Accept-Encoding"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "20"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ],
+                                [
+                                    "Strict-Transport-Security",
+                                    "max-age=31536000"
+                                ],
+                                [
+                                    "Expect-CT",
+                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
+                                ]
+                            ]
+                        }
+                    },
+                    "proxy-response": {
+                        "status": 200,
+                        "reason": "OK",
+                        "content": {
+                            "encoding": "plain",
+                            "size": 20
+                        },
+                        "headers": {
+                            "encoding": "esc_json",
+                            "fields": [
+                                [
+                                    "Date",
+                                    "Sat, 16 Mar 2019 03:10:58 GMT"
+                                ],
+                                [
+                                    "Content-Type",
+                                    "application/octet-stream"
+                                ],
+                                [
+                                    "Age",
+                                    "0"
+                                ],
+                                [
+                                    "Via",
+                                    "http/1.1 media-router-omegaplus213.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry14.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
+                                ],
+                                [
+                                    "Server",
+                                    "ATS"
+                                ],
+                                [
+                                    "X-Frame-Options",
+                                    "SAMEORIGIN"
+                                ],
+                                [
+                                    "Referrer-Policy",
+                                    "no-referrer-when-downgrade"
+                                ],
+                                [
+                                    "Content-Encoding",
+                                    "gzip"
+                                ],
+                                [
+                                    "Vary",
+                                    "Accept-Encoding"
+                                ],
+                                [
+                                    "Content-Length",
+                                    "20"
+                                ],
+                                [
+                                    "Strict-Transport-Security",
+                                    "max-age=15552000"
+                                ],
+                                [
+                                    "Connection",
+                                    "keep-alive"
+                                ],
+                                [
+                                    "Expect-CT",
+                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
+                                ],
+                                [
+                                    "X-XSS-Protection",
+                                    "1; mode=block"
+                                ],
+                                [
+                                    "X-Content-Type-Options",
+                                    "nosniff"
+                                ],
+                                [
+                                    "Public-Key-Pins-Report-Only",
+                                    "max-age=2592000; pin-sha256=\"2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY=\"; pin-sha256=\"I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o=\"; pin-sha256=\"Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw=\"; pin-sha256=\"WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=\"; pin-sha256=\"i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=\"; pin-sha256=\"r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=\"; pin-sha256=\"uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=\"; pin-sha256=\"dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A=\"; includeSubdomains; report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only\""
+                                ]
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

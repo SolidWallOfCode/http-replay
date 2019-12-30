@@ -1,0 +1,60 @@
+'''
+'''
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+import os
+
+
+def check_file(dir_name, file_name):
+    if not os.path.isfile(file_name):
+        hint = ''
+        if os.path.isfile(os.path.join(dir_name, 'bin', 'replay-server')):
+            hint = "\nDid you mean '--replay-bin {}'?".\
+                format(os.path.join(dir_name, 'bin'))
+        host.WriteError("replay-server is not found. Aborting tests - "
+                        "Bad build or install.{}".format(hint), show_stack=False)
+
+
+if Arguments.replay_bin is not None:
+    # Add environment variables
+    ENV['REPLAY_BIN'] = Arguments.replay_bin
+
+if ENV['REPLAY_BIN'] is not None:
+    # Add variables for Tests
+    replay_bin = ENV['REPLAY_BIN']
+    if not os.path.isdir(replay_bin):
+        host.WriteError("--replay-bin requires a directory", show_stack=False)
+    replay_client = os.path.join(replay_bin, "replay-client")
+    check_file(replay_bin, replay_client)
+    replay_server = os.path.join(replay_bin, "replay-server")
+    check_file(replay_bin, replay_server)
+
+    new_variables = {
+            'REPLAY_BIN': replay_bin,
+            'REPLAY_CLIENT': replay_client,
+            'REPLAY_SERVER': replay_server,
+            }
+    Variables.update(new_variables)
+
+if Arguments.ld_library_path is not None:
+    # Add environment variables
+    ENV['LD_LIBRARY_PATH'] = Arguments.ld_library_path
+
+# Modify delay times as we always have to kill server-replay, thus there's no
+# need to wait.
+Variables.Autest.StopProcessLongDelaySeconds = 0
+Variables.Autest.KillDelaySecond = 30
