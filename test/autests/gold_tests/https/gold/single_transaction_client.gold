@@ -1,30 +1,13 @@
 ``
 ``Status: "200"
 ``Headers:
-- "x-content-type-options": "nosniff"
-- "age": "1"
-- "server": "ATS"
+- "content-type": "multipart/form-data;snoopy=123456"
 - "date": "Sat, 16 Mar 2019 01:33:27 GMT"
-- "expect-ct": "max-age=31536000, report-uri="http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only""
-- "via": "http/1.1 o9.ycpi.ne1.yahoo.com (ApacheTrafficServer [cMsSf ])"
-- "x-xss-protection": "1; mode=block"
-- "x-server-chain": "jws700004.mail.ir2.yahoo.com,jws200012.mail.ne1.yahoo.com"
-- "content-type": "multipart/form-data;boundary=Boundary_24962486_651902023_1552700006699"
-- "strict-transport-security": "max-age=15552000"
-- "mime-version": "1.0"
-- "x-frame-options": "SAMEORIGIN"
-- "x-proxy-server-response-time": "99"
-- "x-server-response-time": "1155ms"
-- "referrer-policy": "no-referrer-when-downgrade"
-- "public-key-pins-report-only": "max-age=2592000; pin-sha256="2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY="; pin-sha256="I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o="; pin-sha256="Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw="; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; pin-sha256="i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY="; pin-sha256="r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="; pin-sha256="uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc="; pin-sha256="dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A="; includeSubdomains; report-uri="http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only""
-``
-``12 bytes.
+- "age": "1"
+
+``Reading response body offset=.
 ``
 ``Connecting via TLS.
-``Starting session "single_http_transaction.json"``
-``1 transactions in 1 sessions (reuse 1) ``
-``Parsed 1 transactions.
-``
-``Loading 1 replay files.
-``Loading directory "/tmp/sbreplay/https/client1/single_transaction".
+``Starting session "single_http_transaction.json":5 protocol=https.
+``1 transactions in 1 sessions ``
 ``

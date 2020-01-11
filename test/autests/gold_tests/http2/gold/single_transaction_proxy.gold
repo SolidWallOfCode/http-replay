@@ -3,54 +3,25 @@
 
 :method: get
 :scheme: https
-:path: /video/sapi/streams/d60d57d0-6b7c-3449-b293-f3758b562bc2?format=mp4&devtype=sports-smartphone-app,smartphone-app&acctid=953&vpa=1&protocol=http,lightray&region=us&lang=en-us&site=sports&expn=vertical-video&plid=(null)&autoplay=false&rt=html&pver=5.8.0&hlspre=true&iosversion=1&deviceid=00000000-0000-0000-0000-000000000000&dnt=true&width=0&ads=yvap,vrm2&appbundle=com.softacular.sportacular
-:authority: video-api.real.yql.yahoo.com
+:path: /path
+:authority: example.data.com
 uuid: cb9b4e94-5d42-43d4-8545-320033298ba2-211674043
-y-rid: 0et9e2de8ojdh
-x-from-ycpi: ProxyByYCPI
-x-yahoo-dc-time-cost: 2
-x-yahoo-dc-classify-method: from device detection
-accept-language: en-us
-x-yahoo-dc-os-name: ios
-x-yahoo-dc-override-device-type: 
-x-yahoo-dc-device-type: smartphone
 accept: */*
-x-yahoo-dc-robot: 0
-cookie: contentPersonalization=optedIn;oathAsThirdParty=optedIn;accountMatching=optedIn;B=5ct6nnj8e0s8u;firstPartyAds=optedIn;analysisOfCommunications=optedIn;crossDeviceMapping=optedIn;searchHistory=optedIn;OOC=10NN11111111;AO=o=1&pm=1;isGDPRJurisdiction=false;preciseGeolocation=optedIn
-user-agent: Mozilla/5.0 (iPhone; CPU iPhone OS 12.1.4 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/12 Mobile/11B511 Safari/9537.53 YahooMobileScreen/8813 (iPhone Mail/2.0.2) (;Apple;iPhone;12.1.4/;iOS;phone;)
+accept-language: en-us
+host: example.com
 accept-encoding: gzip
-x-yahoo-dc-app-name: 
-host: video.media.yql.yahoo.com
-x-yahoo-dc-marketing-name: iPhone
-x-yahoo-dc-app-version: 
-x-yahoo-dc-browser-name: safari mobile
-x-yahoo-dc-os-version: 12.1
-x-cdn: YCPI-video
-x-yahoo-dc-browser-version: 
-``
 ==== REQUEST BODY ====
 b''
 
 200 ok
 
 ==== RESPONSE HEADERS ====
-x-xss-protection: 1; mode=block
-x-frame-options: SAMEORIGIN
-referrer-policy: no-referrer-when-downgrade
-public-key-pins-report-only: max-age=2592000; pin-sha256="2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY="; pin-sha256="I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o="; pin-sha256="K87oWBWM9UZfyddvDfoxL+8lpNyoUB2ptGtn0fv6G2Q="; pin-sha256="Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw="; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; pin-sha256="cGuxAXyFXFkWm61cF4HPWX8S0srS9j0aSqN0k4AP+4A="; pin-sha256="dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A="; pin-sha256="i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY="; pin-sha256="r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="; pin-sha256="uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc="; includeSubdomains; report-uri="http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only"
-via: http/1.1 media-router-omega76.prod.media.ne1.yahoo.com (ApacheTrafficServer [cMsSf ])
+age: 0
+date: Sat, 16 Mar 2019 01:13:21 GMT
 content-encoding: gzip
 cache-control: private
 content-length: 16
-x-yahoo-request-id: 0et9e2de8ojdh
 content-type: application/json;charset=utf-8
-strict-transport-security: max-age=31536000
-vary: Origin
-x-content-type-options: nosniff
-expect-ct: max-age=31536000, report-uri="http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only"
-date: Sat, 16 Mar 2019 01:13:21 GMT
-server: ATS
-age: 0
 
 
 

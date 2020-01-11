@@ -1,21 +1,21 @@
 ``Configuring logging at level DIAG
 ``
-`` Status: "200"
-``
-- "x-content-type-options": "nosniff"
-- "x-testheader": "from_server_response"
-- "content-type": "application/octet-stream"
+``Status: "200"
+``Headers:
 - "content-length": "0"
-- "referrer-policy": "strict-origin-when-cross-origin"
-- "date": "Sat, 16 Mar 2019 03:11:36 GMT"
+- "content-type": "application/octet-stream"
 - "server": "ATS"
+- "via": "http/1.1 example.data1.com, http/1.1 example.data2.com"
+- "x-testheader": "from_server_response"
 - "age": "0"
-- "x-xss-protection": "1; mode=block"
-- "via": "http/1.1 media-router-omegaplus17.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry8.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ])"
-- "x-frame-options": "DENY"
+- "date": "Sat, 16 Mar 2019 03:11:36 GMT"
+
+``Reading response body``
 ``
-``1 transactions in 1 sessions (reuse 1) in ``
+``Starting session "single_http_transaction.json":5 protocol=http.
+``1 transactions in 1 sessions``
 ``Parsed 1 transactions.
+``
 ``Loading 1 replay files.
 ``Loading directory "/tmp/sbreplay/http/client1/single_transaction".
 ``

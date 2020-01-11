@@ -192,12 +192,13 @@ void TF_Serve(std::thread *t) {
     errata = thread_info._session->accept();
     while (!thread_info._session->is_closed() && errata.is_ok()) {
       HttpHeader req_hdr;
+      swoc::Errata thread_errata;
       swoc::LocalBufferWriter<MAX_HDR_SIZE> w;
       auto &&[header_bytes_read, read_header_errata] =
           thread_info._session->read_header(w);
-      errata.note(read_header_errata);
+      thread_errata.note(read_header_errata);
       if (!read_header_errata.is_ok()) {
-        errata.error("Could not read the header.");
+        thread_errata.error("Could not read the header.");
         break;
       }
 
@@ -209,26 +210,26 @@ void TF_Serve(std::thread *t) {
       const auto received_data = swoc::TextView(w.data(), body_offset);
       auto &&[parse_result, parse_errata] =
           req_hdr.parse_request(received_data);
-      errata.note(parse_errata);
+      thread_errata.note(parse_errata);
 
-      if (parse_result != HttpHeader::PARSE_OK || !errata.is_ok()) {
-        errata.error(R"(The received request was malformed.)");
-        errata.diag(R"(Received data: {}.)", received_data);
+      if (parse_result != HttpHeader::PARSE_OK || !thread_errata.is_ok()) {
+        thread_errata.error(R"(The received request was malformed.)");
+        thread_errata.diag(R"(Received data: {}.)", received_data);
         break;
       }
-      errata.diag("Handling request with url: {}", req_hdr._url);
+      thread_errata.diag("Handling request with url: {}", req_hdr._url);
       auto key{req_hdr.make_key()};
       auto specified_response{Transactions.find(key)};
 
       if (specified_response == Transactions.end()) {
-        errata.error(R"(Proxy request with key "{}" not found.)", key);
+        thread_errata.error(R"(Proxy request with key "{}" not found.)", key);
         break;
       }
 
       [[maybe_unused]] auto &[unused_key, txn] = *specified_response;
 
-      errata.note(req_hdr.update_content_length(req_hdr._method));
-      errata.note(req_hdr.update_transfer_encoding());
+      thread_errata.note(req_hdr.update_content_length(req_hdr._method));
+      thread_errata.note(req_hdr.update_transfer_encoding());
 
       // If there is an Expect header with the value of 100-continue, send the
       // 100-continue response before Reading request body.
@@ -238,20 +239,20 @@ void TF_Serve(std::thread *t) {
       }
 
       if (req_hdr._content_length_p || req_hdr._chunked_p) {
-        errata.diag("Draining request body.");
+        thread_errata.diag("Draining request body.");
         auto &&[bytes_drained, drain_errata] = thread_info._session->drain_body(
             req_hdr, w.view().substr(body_offset));
-        errata.note(drain_errata);
+        thread_errata.note(drain_errata);
 
-        if (!errata.is_ok()) {
-          errata.error("Failed to drain the request body.");
+        if (!thread_errata.is_ok()) {
+          thread_errata.error("Failed to drain the request body.");
           break;
         }
       }
-      errata.diag("Validating request with url: {}", req_hdr._url);
-      errata.diag("{}", req_hdr);
+      thread_errata.diag("Validating request with url: {}", req_hdr._url);
+      thread_errata.diag("{}", req_hdr);
       if (req_hdr.verify_headers(*txn._req._fields_rules)) {
-        errata.error(
+        thread_errata.error(
             R"(Request headers did not match expected request headers.)");
       }
       // Responses to HEAD requests may have a non-zero Content-Length
@@ -259,14 +260,14 @@ void TF_Serve(std::thread *t) {
       // expectations so the body is not written for responses to such
       // requests.
       txn._rsp.update_content_length(req_hdr._method);
-      errata.diag("Responding to request {} with status {}.", req_hdr._url,
-                  txn._rsp._status);
+      thread_errata.diag("Responding to request {} with status {}.",
+                         req_hdr._url, txn._rsp._status);
       auto &&[bytes_written, write_errata] =
           thread_info._session->write(txn._rsp);
-      errata.note(write_errata);
-      errata.diag("Wrote {} bytes in response to request with url {} with "
-                  "response status {}",
-                  bytes_written, req_hdr._url, txn._rsp._status);
+      thread_errata.note(write_errata);
+      thread_errata.diag("Wrote {} bytes in response to request with url {} "
+                         "with response status {}",
+                         bytes_written, req_hdr._url, txn._rsp._status);
     }
 
     // cleanup and get ready for another session.

@@ -1,25 +1,18 @@
 ``
-``Responding to request /ws/v3/batch/?wssid=v2*40sisc9qngu&appid=yahoomailandroidmobile&ymreqid=3c07a114-6f74-e82e-224d-15000d012900&appver=5.37.1.1365645&mobilebatch=prefetchmessagebody&httpver=1 with status 200.
+``Listening at 127.0.0.1:4444
+``Listening at 127.0.0.1:8080
+``Ready with 1 transactions.
+``Loading 1 replay files.
 ``
-- "x-yahoo-dc-os-version": "9"
-- "x-yahoo-dc-browser-name": ""
-- "content-length": "10"
-- "x-yahoo-dc-app-version": "5.37"
-- "x-yahoo-dc-marketing-name": "Galaxy S9"
-- "accept-encoding": "gzip"
-- "user-agent": "YMobile/1.0 (com.yahoo.mobile.client.android.mail/5.37.1; Android/9; PPR1.180610.011; starqlteue; samsung; SM-G960U1; 5.47; 2076x1080;)"
-- "cookie": "B=797lglbdjn7gs&b=4&d=_9MU0XFpYFCpD7LrssU3NwhacyI2TvIf3zmuNg--&s=td&i=GQP3GCHnGy8IKZhisQbH; F=d=CJNhU809vPMNGneFZ73FxNdV7SdC8eYR01g396vaPA--; Y=v=1&np=1&n=b2e0e9jtkog10&l=c82704byrcn/o&p=m2hvvgt00000000&iz=18000&r=iv&lg=es-ES&intl=es; T=z=kZJhcBkDdjcBUO/UHahpp6BMzI2NQY0TzM3MDE3N08y&a=QAE&sk=DAAqPWMCbANtjX&ks=EAAeQEV1.BSBv4q5BoLEULcQQ--~G&kt=EAAtOtaIghlgEgIx2tP9vFdqg--~I&ku=FAAgmC8AS.w_lAEzy37Jgu2.Rr9WK6SY67vUbgjpU1LxOFYeVAeDrxgwZxL5a7KcCeLLK_j9t6I1Yt_0bsbr2hsWVXFbEFo.2OBuzrn2ZyD09h4H5GHaDoURCMN.VyScqGJ1sp4tGa23NOqv6Lh2w0wpXamAX.6CpqlnCW4BgKjQ8I-~A&d=bnMBeWFob28BZwFXRFlGMk1SVTdPTVhIVzVKQlc2QUc1NFBZTQFzbAFORFV4TWdFek9EUXdOell3TURnMQFhAVFBRQFhYwFBQWU3cDBIcFFQMmZSSDgtAXNjAXltb2JpbGVtYWlsAWZzAXRlSFRWVXRiN2l5WgF6egFrWkpoY0JnZEM-&af=QkNBQkJBJnRzPTE1NTIxOTMxMjQmcHM9NHFFM0d1cGowYzJUenhrTmhGOE90US0t;"
-- "x-yahoo-dc-robot": "0"
-- "x-yahoo-dc-os-name": "android"
-- "content-type": "application/json; charset=utf-8"
-- "x-yahoo-dc-time-cost": "2"
-- "x-yahoo-dc-classify-method": "from device detection"
-- "y-rid": "1teg0hpe8okj6"
+``Reading header.
+``
+``Responding to request /a/path with status 200.
+``Headers:
+- "host": "example.com"
 - "uuid": "cb9b4e94-5d42-43d4-8545-320033298ba2-214279439"
-- "x-yahoo-dc-device-type": "smartphone"
-- "x-yahoo-dc-override-device-type": ""
-- "x-cdn": "YCPI-AB_mail"
-- "x-yahoo-dc-browser-version": ""
-- "x-yahoo-dc-app-name": "yahoomobilemail"
-- "host": "apis.mail.yahoo.com"
+- "content-length": "10"
+- "accept-encoding": "gzip"
+- "content-type": "application/json; charset=utf-8"
+
+``Validating request with url: /a/path
 ``

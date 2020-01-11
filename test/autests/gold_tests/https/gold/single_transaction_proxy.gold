@@ -1,48 +1,20 @@
 ``
-post https://ycpi-ssl-offramp.ops.yahoo.net/ws/v3/batch/?wssid=v2*40sisc9qngu&appid=yahoomailandroidmobile&ymreqid=3c07a114-6f74-e82e-224d-15000d012900&appver=5.37.1.1365645&mobilebatch=prefetchmessagebody&httpver=1 HTTP/1.1
+post https://example.data.com/a/path HTTP/1.1
 uuid: cb9b4e94-5d42-43d4-8545-320033298ba2-214279439
-y-rid: 1teg0hpe8okj6
-x-yahoo-dc-time-cost: 2
-x-yahoo-dc-classify-method: from device detection
-x-yahoo-dc-override-device-type: 
-x-yahoo-dc-device-type: smartphone
-x-cdn: YCPI-AB_mail
-x-yahoo-dc-browser-version: 
-x-yahoo-dc-app-name: yahoomobilemail
-host: apis.mail.yahoo.com
-content-type: application/json; charset=utf-8
-x-yahoo-dc-os-name: android
-x-yahoo-dc-robot: 0
-cookie: B=797lglbdjn7gs&b=4&d=_9MU0XFpYFCpD7LrssU3NwhacyI2TvIf3zmuNg--&s=td&i=GQP3GCHnGy8IKZhisQbH; F=d=CJNhU809vPMNGneFZ73FxNdV7SdC8eYR01g396vaPA--; Y=v=1&np=1&n=b2e0e9jtkog10&l=c82704byrcn/o&p=m2hvvgt00000000&iz=18000&r=iv&lg=es-ES&intl=es; T=z=kZJhcBkDdjcBUO/UHahpp6BMzI2NQY0TzM3MDE3N08y&a=QAE&sk=DAAqPWMCbANtjX&ks=EAAeQEV1.BSBv4q5BoLEULcQQ--~G&kt=EAAtOtaIghlgEgIx2tP9vFdqg--~I&ku=FAAgmC8AS.w_lAEzy37Jgu2.Rr9WK6SY67vUbgjpU1LxOFYeVAeDrxgwZxL5a7KcCeLLK_j9t6I1Yt_0bsbr2hsWVXFbEFo.2OBuzrn2ZyD09h4H5GHaDoURCMN.VyScqGJ1sp4tGa23NOqv6Lh2w0wpXamAX.6CpqlnCW4BgKjQ8I-~A&d=bnMBeWFob28BZwFXRFlGMk1SVTdPTVhIVzVKQlc2QUc1NFBZTQFzbAFORFV4TWdFek9EUXdOell3TURnMQFhAVFBRQFhYwFBQWU3cDBIcFFQMmZSSDgtAXNjAXltb2JpbGVtYWlsAWZzAXRlSFRWVXRiN2l5WgF6egFrWkpoY0JnZEM-&af=QkNBQkJBJnRzPTE1NTIxOTMxMjQmcHM9NHFFM0d1cGowYzJUenhrTmhGOE90US0t;
-user-agent: YMobile/1.0 (com.yahoo.mobile.client.android.mail/5.37.1; Android/9; PPR1.180610.011; starqlteue; samsung; SM-G960U1; 5.47; 2076x1080;)
 accept-encoding: gzip
-x-yahoo-dc-marketing-name: Galaxy S9
-x-yahoo-dc-app-version: 5.37
+content-type: application/json; charset=utf-8
 content-length: 10
-x-yahoo-dc-browser-name: 
-x-yahoo-dc-os-version: 9
-Host: ycpi-ssl-offramp.ops.yahoo.net
-``
+host: example.com
+Host: example.data.com
+
+
 ==== REQUEST BODY ====
 b'0000000 00'
 
 HTTP/1.1 200 ok
-x-frame-options: SAMEORIGIN
-x-xss-protection: 1; mode=block
-via: http/1.1 o9.ycpi.ne1.yahoo.com (ApacheTrafficServer [cMsSf ])
-x-server-chain: jws700004.mail.ir2.yahoo.com,jws200012.mail.ne1.yahoo.com
-content-type: multipart/form-data;boundary=Boundary_24962486_651902023_1552700006699
-x-proxy-server-response-time: 99
-x-server-response-time: 1155ms
-public-key-pins-report-only: max-age=2592000; pin-sha256="2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY="; pin-sha256="I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o="; pin-sha256="Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw="; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; pin-sha256="i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY="; pin-sha256="r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="; pin-sha256="uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc="; pin-sha256="dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A="; includeSubdomains; report-uri="http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only"
-referrer-policy: no-referrer-when-downgrade
-mime-version: 1.0
-strict-transport-security: max-age=15552000
-expect-ct: max-age=31536000, report-uri="http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only"
-date: Sat, 16 Mar 2019 01:33:27 GMT
-server: ATS
 age: 1
-x-content-type-options: nosniff
+date: Sat, 16 Mar 2019 01:33:27 GMT
+content-type: multipart/form-data;snoopy=123456
 
 
 ==== RESPONSE BODY ====

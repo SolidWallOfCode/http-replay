@@ -19,8 +19,8 @@ proxy = r.AddProxyProcess("proxy", listen_port=8080, server_port=8081)
 
 # Verify a success and failure of each validation in the request.
 server.Streams.stdout = Testers.ContainsExpression(
-        'Absence Success: Key: "x-cdn"',
-        'Validation should be happy that the proxy removed X-CDN.')
+        'Absence Success: Key: "x-candy"',
+        'Validation should be happy that the proxy removed X-CANDY.')
 server.Streams.stdout += Testers.ContainsExpression(
         'Absence Violation: Present. Key: "content-type", Value: "application/octet-stream"',
         'Validation should complain that "content-type" is present')
@@ -28,28 +28,28 @@ server.Streams.stdout += Testers.ContainsExpression(
         'Presence Success: Key: "content-length", Value: "399"',
         'Validation should be happy that "content-length" is present.')
 server.Streams.stdout += Testers.ContainsExpression(
-        'Presence Success: Key: "yahooremoteip", Value: "10.10.10.4"',
-        'Validation should be happy that "YahooRemoteIP" is present even though its value differs.')
+        'Presence Success: Key: "exampleremoteip", Value: "10.10.10.4"',
+        'Validation should be happy that "ExampleRemoteIP" is present even though its value differs.')
 server.Streams.stdout += Testers.ContainsExpression(
         'Presence Violation: Absent. Key: "client-ip"',
         'Validation should complain that "client-ip" is misssing')
 server.Streams.stdout += Testers.ContainsExpression(
-        'Equals Success: Key: "y-rid", Value: "bvr4v55e8oqb8"',
-        'Validation should be happy that "y-rid" has the expected value.')
+        'Equals Success: Key: "x-someid", Value: "21djfk39jfkds"',
+        'Validation should be happy that "S-SomeId" has the expected value.')
 server.Streams.stdout += Testers.ContainsExpression(
-        'Equals Violation: Different. Key: "host", Correct Value: "data.flurry.com", Actual Value: "test.flurry.com"',
-        'Validation should complain that the "host" value differs from the expected value.')
+        'Equals Violation: Different. Key: "host", Correct Value: "example.com", Actual Value: "test.example.com"',
+        'Validation should complain that the "Host" value differs from the expected value.')
 server.Streams.stdout += Testers.ContainsExpression(
         'Equals Violation: Different. Key: "x-test-case", Correct Value: "CASEmatters", Actual Value: "caseMATTERS"',
         'Equals validation must be case-sensitive.')
 
 # Verify a success and failure of each validation in the response.
 client.Streams.stdout = Testers.ContainsExpression(
-        'Absence Success: Key: "x-content-type-options"',
-        'Validation should be happy that the proxy removed X-Content-Type-Options.')
+        'Absence Success: Key: "x-newtestheader"',
+        'Validation should be happy that the proxy removed X-NewTestHeader.')
 client.Streams.stdout += Testers.ContainsExpression(
-        'Absence Violation: Present. Key: "x-xss-protection", Value: "1; mode=block"',
-        'Validation should complain that "X-XSS-Protection" is present')
+        'Absence Violation: Present. Key: "x-shouldexist", Value: "trustme; it=will"',
+        'Validation should complain that "X-ShouldExist" is present')
 client.Streams.stdout += Testers.ContainsExpression(
         'Presence Success: Key: "content-length", Value: "0"',
         'Validation should be happy that "content-length" is present.')

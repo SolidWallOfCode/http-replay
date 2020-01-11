@@ -17,7 +17,7 @@
                         "version": "1.1",
                         "scheme": "http",
                         "method": "POST",
-                        "url": "http://data.real.flurry.com/client.do",
+                        "url": "http://example.data.com/client.do",
                         "content": {
                             "encoding": "plain",
                             "size": 399
@@ -35,19 +35,11 @@
                                 ],
                                 [
                                     "Host",
-                                    "data.flurry.com"
+                                    "example.com"
                                 ],
                                 [
                                     "Connection",
                                     "Keep-Alive"
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-flurry"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "bvr4v55e8oqb8"
                                 ],
                                 [
                                     "uuid",
@@ -78,51 +70,11 @@
                                 ],
                                 [
                                     "Host",
-                                    "data.flurry.com"
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-flurry"
+                                    "example.com"
                                 ],
                                 [
                                     "Client-ip",
-                                    "187.188.63.1"
-                                ],
-                                [
-                                    "X-Forwarded-For",
-                                    "187.188.63.1"
-                                ],
-                                [
-                                    "Via",
-                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
-                                ],
-                                [
-                                    "YahooRemoteIP",
-                                    "187.188.63.1"
-                                ],
-                                [
-                                    "YahooRemoteIPSig",
-                                    "Oxaw4vx6tU8AVMSeoyMT7g--~D"
-                                ],
-                                [
-                                    "Y-RA",
-                                    "187.188.63.1"
-                                ],
-                                [
-                                    "Y-RP",
-                                    "2603"
-                                ],
-                                [
-                                    "Y-RS",
-                                    "oR2Z_Wl9jxibLbJLHbVjGg--~B"
-                                ],
-                                [
-                                    "Y-Path",
-                                    "f=187.188.63.1:2603;b=69.147.86.249:80;z=bDMSujd7xQCdkxwRnxuySw--~B"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "bvr4v55e8oqb8"
+                                    "10.10.10.1"
                                 ],
                                 [
                                     "uuid",
@@ -162,30 +114,6 @@
                                     "0"
                                 ],
                                 [
-                                    "Via",
-                                    "http/1.1 media-router-omegaplus17.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry8.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ])"
-                                ],
-                                [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "DENY"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "strict-origin-when-cross-origin"
-                                ],
-                                [
                                     "Connection",
                                     "keep-alive"
                                 ]
@@ -221,30 +149,6 @@
                                 [
                                     "Age",
                                     "0"
-                                ],
-                                [
-                                    "Via",
-                                    "http/1.1 media-router-omegaplus17.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry8.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
-                                ],
-                                [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "DENY"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "strict-origin-when-cross-origin"
                                 ],
                                 [
                                     "Connection",

@@ -17,7 +17,7 @@
                         "version": "1.1",
                         "scheme": "http",
                         "method": "POST",
-                        "url": "http://data.real.flurry.com/client.do",
+                        "url": "http://example.real.com/client.do",
                         "content": {
                             "encoding": "plain",
                             "size": 399
@@ -35,19 +35,19 @@
                                 ],
                                 [
                                     "Host",
-                                    "data.flurry.com"
+                                    "example.com"
                                 ],
                                 [
                                     "Connection",
                                     "Keep-Alive"
                                 ],
                                 [
-                                    "X-CDN",
-                                    "YCPI-flurry"
+                                    "X-CANDY",
+                                    "Candy-Bar"
                                 ],
                                 [
-                                    "Y-RID",
-                                    "bvr4v55e8oqb8"
+                                    "X-SomeID",
+                                    "21djfk39jfkds"
                                 ],
                                 [
                                     "uuid",
@@ -59,7 +59,7 @@
                                 ],
                                 [
                                     "X-Proxy-Directive",
-                                    "Delete=%<X-CDN%> Insert=%<Host: test.flurry.com%> Insert=%<YahooRemoteIP: 10.10.10.4%> Insert=%<X-Test-Case: caseMATTERS%>"
+                                    "Delete=%<X-CANDY%> Insert=%<Host: test.example.com%> Insert=%<ExampleRemoteIP: 10.10.10.4%> Insert=%<X-Test-Case: caseMATTERS%>"
                                 ]
                             ]
                         }
@@ -88,55 +88,35 @@
                                 ],
                                 [
                                     "Host",
-                                    "data.flurry.com",
+                                    "example.com",
                                     "equal"
                                 ],
                                 [
-                                    "X-CDN",
-                                    "YCPI-flurry",
+                                    "X-CANDY",
+                                    "Candy-Bar",
                                     "absent"
                                 ],
                                 [
                                     "Client-ip",
-                                    "187.188.63.1",
+                                    "10.10.10.1",
                                     "present"
                                 ],
                                 [
                                     "X-Forwarded-For",
-                                    "187.188.63.1"
+                                    "10.10.10.2"
                                 ],
                                 [
                                     "Via",
-                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
+                                    "http/1.1 example.data.com (Poland)"
                                 ],
                                 [
-                                    "YahooRemoteIP",
-                                    "187.188.63.1",
+                                    "ExampleRemoteIP",
+                                    "10.10.10.4",
                                     "present"
                                 ],
                                 [
-                                    "YahooRemoteIPSig",
-                                    "Oxaw4vx6tU8AVMSeoyMT7g--~D"
-                                ],
-                                [
-                                    "Y-RA",
-                                    "187.188.63.1"
-                                ],
-                                [
-                                    "Y-RP",
-                                    "2603"
-                                ],
-                                [
-                                    "Y-RS",
-                                    "oR2Z_Wl9jxibLbJLHbVjGg--~B"
-                                ],
-                                [
-                                    "Y-Path",
-                                    "f=187.188.63.1:2603;b=69.147.86.249:80;z=bDMSujd7xQCdkxwRnxuySw--~B"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "bvr4v55e8oqb8",
+                                    "X-SomeID",
+                                    "21djfk39jfkds",
                                     "equal"
                                 ],
                                 [
@@ -183,7 +163,7 @@
                                 ],
                                 [
                                     "Via",
-                                    "http/1.1 media-router-omegaplus17.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry8.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ])"
+                                    "http/1.1 example.data2.com (Ireland)"
                                 ],
                                 [
                                     "Server",
@@ -194,16 +174,12 @@
                                     "DENY"
                                 ],
                                 [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
+                                    "X-NewTestHeader",
+                                    "chocolate"
                                 ],
                                 [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "strict-origin-when-cross-origin"
+                                    "X-ShouldExist",
+                                    "trustme; it=will"
                                 ],
                                 [
                                     "Connection",
@@ -211,7 +187,7 @@
                                 ],
                                 [
                                     "X-Proxy-Directive",
-                                    "Delete=%<X-Content-Type-Options%> Insert=%<Age: 4%>"
+                                    "Delete=%<X-NewTestHeader%> Insert=%<Age: 4%>"
                                 ]
                             ]
                         }
@@ -257,24 +233,16 @@
                                 ],
                                 [
                                     "Via",
-                                    "http/1.1 media-router-omegaplus17.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry8.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
+                                    "http/1.1 example.data2.com (Ireland)"
                                 ],
                                 [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "DENY"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff",
+                                    "X-NewTestHeader",
+                                    "chocolate",
                                     "absent"
                                 ],
                                 [
-                                    "X-XSS-Protection",
-                                    "1; mode=block",
+                                    "X-ShouldExist",
+                                    "trustme; it=will",
                                     "absent"
                                 ],
                                 [

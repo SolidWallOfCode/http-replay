@@ -8,6 +8,7 @@
 #include "core/HttpReplay.h"
 #include "core/yaml_util.h"
 
+#include <algorithm>
 #include <dirent.h>
 #include <netdb.h>
 #include <openssl/bio.h>
@@ -15,9 +16,8 @@
 #include <openssl/ssl.h>
 #include <sys/resource.h>
 #include <sys/time.h>
-#include <unistd.h>
-#include <algorithm>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 #include <signal.h>
@@ -748,7 +748,8 @@ static int on_header_callback(nghttp2_session *session,
       }
     }
   }
-  errata.diag("{}: {}", reinterpret_cast<const char *>(name), reinterpret_cast<const char *>(value));
+  errata.diag("{}: {}", reinterpret_cast<const char *>(name),
+              reinterpret_cast<const char *>(value));
   return 0;
 }
 
@@ -1254,8 +1255,7 @@ std::shared_ptr<RuleCheck> RuleCheck::find(const YAML::Node &node,
     errata.info(R"(Invalid Test: Key: "{}")", flag_identifier);
     return nullptr;
   }
-  return fn_iter->second(
-      name, node[YAML_RULE_DATA_KEY].Scalar());
+  return fn_iter->second(name, node[YAML_RULE_DATA_KEY].Scalar());
 }
 
 std::shared_ptr<RuleCheck> RuleCheck::make_equality(swoc::TextView name,
@@ -1422,8 +1422,7 @@ HttpFields::parse_fields_and_rules(YAML::Node const &fields_rules_node,
     TextView name{HttpHeader::localize(node[YAML_RULE_NAME_KEY].Scalar())};
     _fields[name] = node[YAML_RULE_DATA_KEY].Scalar();
     if (node_size == 2 && assume_equality_rule) {
-      _rules[name] =
-          RuleCheck::make_equality(name, _fields[name]);
+      _rules[name] = RuleCheck::make_equality(name, _fields[name]);
     } else if (node_size == 3) {
       // Contans a verification rule.
       std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
@@ -1505,9 +1504,9 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
       // Split out the path and scheme for http/2 required headers
       // See rfc3986 section-3.2.
       // TODO: Break this out into a unit tested static function.
-      std::size_t end_scheme =  _url.find("://");
-      std::size_t auth_start =  end_scheme + 3; // "://" is 3 characters.
-      std::size_t end_host   = auth_start;
+      std::size_t end_scheme = _url.find("://");
+      std::size_t auth_start = end_scheme + 3; // "://" is 3 characters.
+      std::size_t end_host = auth_start;
       if (end_scheme != std::string::npos) {
         _scheme = _url.substr(0, end_scheme);
         // Look for the ':' for the port.
@@ -1519,9 +1518,9 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
             end_host = _url.length();
           }
         }
-        _authority = _url.substr(auth_start, end_host-auth_start);
+        _authority = _url.substr(auth_start, end_host - auth_start);
       }
-      std::size_t path_start = _url.find("/", end_host+1);
+      std::size_t path_start = _url.find("/", end_host + 1);
       if (path_start != std::string::npos) {
         _path = _url.substr(path_start);
       }
@@ -1652,10 +1651,8 @@ bool HttpHeader::verify_headers(const HttpFields &rules_) const {
 }
 
 HttpHeader::HttpHeader(bool verify_strictly)
-    : _verify_strictly{verify_strictly}
-    , _fields_rules{std::make_shared<HttpFields>()}
-{
-}
+    : _verify_strictly{verify_strictly}, _fields_rules{
+                                             std::make_shared<HttpFields>()} {}
 
 swoc::TextView HttpHeader::localize(char const *c_str) {
   return self_type::localize(TextView{c_str, strlen(c_str) + 1});

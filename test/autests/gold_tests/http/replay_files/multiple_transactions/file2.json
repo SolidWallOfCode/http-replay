@@ -17,7 +17,7 @@
                         "version": "1.1",
                         "scheme": "http",
                         "method": "POST",
-                        "url": "http://ue-web.mail.yahoo.com/d/log",
+                        "url": "http://something.real.com/d/log",
                         "content": {
                             "encoding": "plain",
                             "size": 1382
@@ -31,11 +31,7 @@
                                 ],
                                 [
                                     "origin",
-                                    "http://mail.yahoo.com"
-                                ],
-                                [
-                                    "User-Agent",
-                                    "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36"
+                                    "http://something.com"
                                 ],
                                 [
                                     "Content-Type",
@@ -46,10 +42,6 @@
                                     "*/*"
                                 ],
                                 [
-                                    "Referer",
-                                    "http://mail.yahoo.com/d/folders/1?.intl=e1&.lang=es-US&.partner=none&.src=fp"
-                                ],
-                                [
                                     "Accept-Encoding",
                                     "gzip"
                                 ],
@@ -58,68 +50,8 @@
                                     "es-ES,es;q=0.9"
                                 ],
                                 [
-                                    "Cookie",
-                                    "YM.TZ=j%3A%7B%22tz%22%3A%22America%2FMexico_City%22%7D; F=d=PZ335.k9vPGZRQS5Ay0_OYkQBRDyzv7DHfKMkwc-; Y=v=1&n=4kn4hqrajs81o&l=h4f0h0j4b/o&p=m20vvmx00000000&iz=04369&r=f4&lg=es-MX&intl=mx; AO=u=1; GUC=AQEAAQJcTLNdKkIeFARf&s=AQAAALhhoOZk&g=XEtr7Q; cmp=t=1548957175&j=0; B=92corp1e4jko1&b=4&d=YvXvgt1pYFoKJgPmh7LE8Lp_rkIRgTYLCHPaYw--&s=sc&i=Hie0Wr_MmYIfup3dVTxk; T=z=kMcecBkgDjcBq0SinpUectAMzUxNQY2MzVPNk5OTk40&a=QAE&sk=DAAPV9XUNpf2y7&ks=EAAfD16HTYEukq9piwq9Ll8jQ--~G&kt=EAAOcuYjBjD351M_TiU6ujTFA--~I&ku=FAABbrwq3wUQHcW1Oxx1Y2aWSjgrQzbYQAQr6wCbuOb0whNUjKC_vPAet3VzJznd5WmljhXu_c2liI2FunVPK3VpSRqi0QjbfPkhubDlk9xcyl75SuIQhfXXumgHb3jbZHAhSIoCt7whovKFHzKvtwotOC9se64GBwLGRZ4NdndoUs-~A&d=bnMBeWFob28BZwFJQTVDT0xQRUNKQ0lCWklXQ1FDM0hNS0dJQQFzbAFOREkyTWdFeE5ESTRNVGs1T1RregFhAVFBRQFhYwFBSFhBRmFCbAFzYzABAXNjMQEBc2MyAQFzYzMBAXNjNAEBc2M1AQFzYzYBAXNjNwEBc2M4AQFzYzkBAWNzAQFzYwFkZXNrdG9wX3dlYgFmcwE4di4zTlVsY1MydmkBenoBa01jZWNCQTdF&af=JnRzPTE1NTE0ODM2ODQmcHM9YS4uRHdoSjhvdzEuejUycTJuQ1J1Zy0t; PH=fn=PS9AGxRTqd4pk4salMoS5Q--&l=es-MX&i=mx"
-                                ],
-                                [
                                     "Host",
-                                    "mail.yahoo.com"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Name",
-                                    "windows nt"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Version",
-                                    "10.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Name",
-                                    "chrome"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Version",
-                                    "72.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Device-Type",
-                                    "desktop"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Robot",
-                                    "0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Override-Device-Type",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Classify-Method",
-                                    "from os default device type"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Time-Cost",
-                                    "2"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Marketing-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-AB_mail"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "b3bv4g9e8ob2b"
+                                    "something.com"
                                 ],
                                 [
                                     "uuid",
@@ -146,11 +78,7 @@
                                 ],
                                 [
                                     "origin",
-                                    "http://mail.yahoo.com"
-                                ],
-                                [
-                                    "User-Agent",
-                                    "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36"
+                                    "http://something.com"
                                 ],
                                 [
                                     "Content-Type",
@@ -161,10 +89,6 @@
                                     "*/*"
                                 ],
                                 [
-                                    "Referer",
-                                    "http://mail.yahoo.com/d/folders/1?.intl=e1&.lang=es-US&.partner=none&.src=fp"
-                                ],
-                                [
                                     "Accept-Encoding",
                                     "gzip"
                                 ],
@@ -173,104 +97,8 @@
                                     "es-ES,es;q=0.9"
                                 ],
                                 [
-                                    "Cookie",
-                                    "YM.TZ=j%3A%7B%22tz%22%3A%22America%2FMexico_City%22%7D; F=d=PZ335.k9vPGZRQS5Ay0_OYkQBRDyzv7DHfKMkwc-; Y=v=1&n=4kn4hqrajs81o&l=h4f0h0j4b/o&p=m20vvmx00000000&iz=04369&r=f4&lg=es-MX&intl=mx; AO=u=1; GUC=AQEAAQJcTLNdKkIeFARf&s=AQAAALhhoOZk&g=XEtr7Q; cmp=t=1548957175&j=0; B=92corp1e4jko1&b=4&d=YvXvgt1pYFoKJgPmh7LE8Lp_rkIRgTYLCHPaYw--&s=sc&i=Hie0Wr_MmYIfup3dVTxk; T=z=kMcecBkgDjcBq0SinpUectAMzUxNQY2MzVPNk5OTk40&a=QAE&sk=DAAPV9XUNpf2y7&ks=EAAfD16HTYEukq9piwq9Ll8jQ--~G&kt=EAAOcuYjBjD351M_TiU6ujTFA--~I&ku=FAABbrwq3wUQHcW1Oxx1Y2aWSjgrQzbYQAQr6wCbuOb0whNUjKC_vPAet3VzJznd5WmljhXu_c2liI2FunVPK3VpSRqi0QjbfPkhubDlk9xcyl75SuIQhfXXumgHb3jbZHAhSIoCt7whovKFHzKvtwotOC9se64GBwLGRZ4NdndoUs-~A&d=bnMBeWFob28BZwFJQTVDT0xQRUNKQ0lCWklXQ1FDM0hNS0dJQQFzbAFOREkyTWdFeE5ESTRNVGs1T1RregFhAVFBRQFhYwFBSFhBRmFCbAFzYzABAXNjMQEBc2MyAQFzYzMBAXNjNAEBc2M1AQFzYzYBAXNjNwEBc2M4AQFzYzkBAWNzAQFzYwFkZXNrdG9wX3dlYgFmcwE4di4zTlVsY1MydmkBenoBa01jZWNCQTdF&af=JnRzPTE1NTE0ODM2ODQmcHM9YS4uRHdoSjhvdzEuejUycTJuQ1J1Zy0t; PH=fn=PS9AGxRTqd4pk4salMoS5Q--&l=es-MX&i=mx"
-                                ],
-                                [
                                     "Host",
-                                    "mail.yahoo.com"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Name",
-                                    "windows nt"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Version",
-                                    "10.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Name",
-                                    "chrome"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Version",
-                                    "72.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Device-Type",
-                                    "desktop"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Robot",
-                                    "0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Override-Device-Type",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Classify-Method",
-                                    "from os default device type"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Time-Cost",
-                                    "2"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Marketing-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-AB_mail"
-                                ],
-                                [
-                                    "Client-ip",
-                                    "187.207.235.60"
-                                ],
-                                [
-                                    "X-Forwarded-For",
-                                    "187.207.235.60"
-                                ],
-                                [
-                                    "Via",
-                                    "http/2 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
-                                ],
-                                [
-                                    "YahooRemoteIP",
-                                    "187.207.235.60"
-                                ],
-                                [
-                                    "YahooRemoteIPSig",
-                                    "jgDEiPG9BULVCD8yPk8BaQ--~D"
-                                ],
-                                [
-                                    "Y-RA",
-                                    "187.207.235.60"
-                                ],
-                                [
-                                    "Y-RP",
-                                    "59726"
-                                ],
-                                [
-                                    "Y-RS",
-                                    "n9H.m96axQroXY1iHQ8okQ--~B"
-                                ],
-                                [
-                                    "Y-Path",
-                                    "f=187.207.235.60:59726;b=69.147.86.249:443;s=1;z=H6JlV89fgD2Mlw8Vh78fpQ--~B"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "b3bv4g9e8ob2b"
+                                    "something.com"
                                 ],
                                 [
                                     "uuid",
@@ -290,30 +118,6 @@
                             "encoding": "esc_json",
                             "fields": [
                                 [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "X-OMG-ENV",
-                                    "norrin-green--production-ne1-66d977bf65-gxxnw"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "DENY"
-                                ],
-                                [
-                                    "Strict-Transport-Security",
-                                    "max-age=2592000"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "origin-when-cross-origin"
-                                ],
-                                [
                                     "Cache-Control",
                                     "no-store, no-cache, must-revalidate, private"
                                 ],
@@ -326,10 +130,6 @@
                                     "0"
                                 ],
                                 [
-                                    "Content-Security-Policy",
-                                    "child-src blob:;connect-src 'self' http://*.yimg.com http://*.yahoo.com http://s.yimg.com/nq/ads/mb/native/* wss://prod.iris.yahoo.com http://www.hipmunk.com/ http://service.cmp.oath.com;default-src 'self';font-src http: data:;frame-src http://*.yahoo.com http://*.yimg.com http://*.ymail.com http://6518610.fls.doubleclick.net/ http://6589630.fls.doubleclick.net/ http://8478561.fls.doubleclick.net/ http://8523621.fls.doubleclick.net/ http://delivery.vidible.tv/ http://secure.bannerfarm.ace.advertising.com http://cmp.advertising.com http://www.fbsbx.com/ads/audience_network/integrations/yahoo-iframe/;img-src data: blob: http: http:;media-src blob: http://*.yahoo.com http://*.yimg.com;report-uri http://csp.yahoo.com/beacon/csp?src=mail-norrin;script-src 'self' http://iris.corp.yahoo.com:8900 http://s.yimg.com/jd/ http://pr.comet.yahoo.com http://s.yimg.com/nq/nr/ http://s.yimg.com/os/yaft/ http://s.yimg.com/ss/ http://s.yimg.com/aaq/yc/ http://s.yimg.com/rq/darla/ http://fc.yahoo.com/sdarla/ http://s.yimg.com/gu/static/ http://www.yahoo.com/polyfill.min.js http://yep.video.yahoo.com/js/ http://s.yimg.com/rx/ http://www.gstatic.com/cv/js/sender/v1/cast_sender.js http://cdn-ssl.vidible.tv/prod/player/js/ http://yep.video.yahoo.com/oath/js/1/ http://assets.video.yahoo.net/playerassets/ http://jsapi.login.yahoo.com/w/ http://consent.cmp.oath.com/ 'sha256-lRMQ2lQozgbWLOqNJOrnclJXX6G77pQVIlF8SAI3++I=' 'unsafe-inline' 'unsafe-eval' 'nonce-7PZkuj8GBNnMZ8DSk2To8jeFlGFf0OuziJtJR+xZe7/Nb/+x' ;style-src 'self' http://s.yimg.com/nq/nr/ http://s.yimg.com/rx/ http://assets.video.yahoo.net/playerassets/ 'unsafe-inline';worker-src 'self';manifest-src http://s.yimg.com/nq/nr/json/"
-                                ],
-                                [
                                     "Date",
                                     "Fri, 15 Mar 2019 22:50:51 GMT"
                                 ],
@@ -340,18 +140,6 @@
                                 [
                                     "Connection",
                                     "keep-alive"
-                                ],
-                                [
-                                    "Via",
-                                    "http/1.1 kubenode15.prod1.ensemble.ne1.yahoo.com (ApacheTrafficServer [c s f ])"
-                                ],
-                                [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "Public-Key-Pins-Report-Only",
-                                    "max-age=2592000; pin-sha256=\"2oALgLKofTmeZvoZ1y/fSZg7R9jPMix8eVA6DH4o/q8=\"; pin-sha256=\"cAajgxHlj7GTSEIzIYIQxmEloOSoJq7VOaxWHfv72QM=\"; pin-sha256=\"SVqWumuteCQHvVIaALrOZXuzVVVeS7f4FGxxu6V+es4=\"; pin-sha256=\"UZJDjsNp1+4M5x9cbbdflB779y5YRBcV6Z6rBMLIrO4=\"; pin-sha256=\"JbQbUG5JMJUoI6brnx0x3vZF6jilxsapbXGVfjhN8Fg=\"; pin-sha256=\"lnsM2T/O9/J84sJFdnrpsFp3awZJ+ZZbYpCWhGloaHI=\"; pin-sha256=\"h6801m+z8v3zbgkRHpq6L29Esgfzhj89C1SyUCOQmqU=\"; pin-sha256=\"SQVGZiOrQXi+kqxcvWWE96HhfydlLVqFr4lQTqI5qqo=\"; pin-sha256=\"q5hJUnat8eyv8o81xTBIeB5cFxjaucjmelBPT2pRMo8=\"; pin-sha256=\"vPtEqrmtAhAVcGtBIep2HIHJ6IlnWQ9vlK50TciLePs=\"; pin-sha256=\"lpkiXF3lLlbN0y3y6W0c/qWqPKC7Us2JM8I7XCdEOCA=\"; pin-sha256=\"r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=\"; pin-sha256=\"WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=\"; pin-sha256=\"2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY=\"; pin-sha256=\"dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A=\"; report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only\""
                                 ]
                             ]
                         }
@@ -367,22 +155,6 @@
                             "encoding": "esc_json",
                             "fields": [
                                 [
-                                    "X-OMG-ENV",
-                                    "norrin-green--production-ne1-66d977bf65-gxxnw"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "DENY"
-                                ],
-                                [
-                                    "Strict-Transport-Security",
-                                    "max-age=15552000"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "origin-when-cross-origin"
-                                ],
-                                [
                                     "Cache-Control",
                                     "no-store, no-cache, must-revalidate, private"
                                 ],
@@ -395,10 +167,6 @@
                                     "0"
                                 ],
                                 [
-                                    "Content-Security-Policy",
-                                    "child-src blob:;connect-src 'self' http://*.yimg.com http://*.yahoo.com http://s.yimg.com/nq/ads/mb/native/* wss://prod.iris.yahoo.com http://www.hipmunk.com/ http://service.cmp.oath.com;default-src 'self';font-src http: data:;frame-src http://*.yahoo.com http://*.yimg.com http://*.ymail.com http://6518610.fls.doubleclick.net/ http://6589630.fls.doubleclick.net/ http://8478561.fls.doubleclick.net/ http://8523621.fls.doubleclick.net/ http://delivery.vidible.tv/ http://secure.bannerfarm.ace.advertising.com http://cmp.advertising.com http://www.fbsbx.com/ads/audience_network/integrations/yahoo-iframe/;img-src data: blob: http: http:;media-src blob: http://*.yahoo.com http://*.yimg.com;report-uri http://csp.yahoo.com/beacon/csp?src=mail-norrin;script-src 'self' http://iris.corp.yahoo.com:8900 http://s.yimg.com/jd/ http://pr.comet.yahoo.com http://s.yimg.com/nq/nr/ http://s.yimg.com/os/yaft/ http://s.yimg.com/ss/ http://s.yimg.com/aaq/yc/ http://s.yimg.com/rq/darla/ http://fc.yahoo.com/sdarla/ http://s.yimg.com/gu/static/ http://www.yahoo.com/polyfill.min.js http://yep.video.yahoo.com/js/ http://s.yimg.com/rx/ http://www.gstatic.com/cv/js/sender/v1/cast_sender.js http://cdn-ssl.vidible.tv/prod/player/js/ http://yep.video.yahoo.com/oath/js/1/ http://assets.video.yahoo.net/playerassets/ http://jsapi.login.yahoo.com/w/ http://consent.cmp.oath.com/ 'sha256-lRMQ2lQozgbWLOqNJOrnclJXX6G77pQVIlF8SAI3++I=' 'unsafe-inline' 'unsafe-eval' 'nonce-7PZkuj8GBNnMZ8DSk2To8jeFlGFf0OuziJtJR+xZe7/Nb/+x' ;style-src 'self' http://s.yimg.com/nq/nr/ http://s.yimg.com/rx/ http://assets.video.yahoo.net/playerassets/ 'unsafe-inline';worker-src 'self';manifest-src http://s.yimg.com/nq/nr/json/"
-                                ],
-                                [
                                     "Date",
                                     "Fri, 15 Mar 2019 22:50:51 GMT"
                                 ],
@@ -407,32 +175,12 @@
                                     "0"
                                 ],
                                 [
-                                    "Via",
-                                    "http/1.1 kubenode15.prod1.ensemble.ne1.yahoo.com (ApacheTrafficServer [c s f ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMs f ])"
-                                ],
-                                [
                                     "Server",
                                     "ATS"
                                 ],
                                 [
                                     "Connection",
                                     "keep-alive"
-                                ],
-                                [
-                                    "Expect-CT",
-                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "Public-Key-Pins-Report-Only",
-                                    "max-age=2592000; pin-sha256=\"2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY=\"; pin-sha256=\"I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o=\"; pin-sha256=\"Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw=\"; pin-sha256=\"WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=\"; pin-sha256=\"i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=\"; pin-sha256=\"r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=\"; pin-sha256=\"uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=\"; pin-sha256=\"dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A=\"; includeSubdomains; report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only\""
                                 ]
                             ]
                         }
@@ -454,7 +202,7 @@
                         "version": "1.1",
                         "scheme": "http",
                         "method": "POST",
-                        "url": "http://data.real.flurry.com/aap.do",
+                        "url": "http://example.real.com/aap.do",
                         "content": {
                             "encoding": "plain",
                             "size": 2196
@@ -467,12 +215,8 @@
                                     "application/octet-stream"
                                 ],
                                 [
-                                    "User-Agent",
-                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Hisense F23 Build/NRD90M)"
-                                ],
-                                [
                                     "Host",
-                                    "data.flurry.com"
+                                    "example.com"
                                 ],
                                 [
                                     "Connection",
@@ -485,62 +229,6 @@
                                 [
                                     "Content-Length",
                                     "2196"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Name",
-                                    "android"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Version",
-                                    "7.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Device-Type",
-                                    "smartphone"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Robot",
-                                    "0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Override-Device-Type",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Classify-Method",
-                                    "from os default device type"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Time-Cost",
-                                    "2"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Marketing-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-flurry"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "e63fpule8oafu"
                                 ],
                                 [
                                     "uuid",
@@ -566,12 +254,8 @@
                                     "application/octet-stream"
                                 ],
                                 [
-                                    "User-Agent",
-                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Hisense F23 Build/NRD90M)"
-                                ],
-                                [
                                     "Host",
-                                    "data.flurry.com"
+                                    "example.com"
                                 ],
                                 [
                                     "Accept-Encoding",
@@ -580,98 +264,6 @@
                                 [
                                     "Content-Length",
                                     "2196"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Name",
-                                    "android"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Version",
-                                    "7.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Device-Type",
-                                    "smartphone"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Robot",
-                                    "0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Override-Device-Type",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Classify-Method",
-                                    "from os default device type"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Time-Cost",
-                                    "2"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Marketing-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-flurry"
-                                ],
-                                [
-                                    "Client-ip",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "X-Forwarded-For",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "Via",
-                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
-                                ],
-                                [
-                                    "YahooRemoteIP",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "YahooRemoteIPSig",
-                                    "KTMlBLtiNkqfEeP.CMw2Xg--~D"
-                                ],
-                                [
-                                    "Y-RA",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "Y-RP",
-                                    "64563"
-                                ],
-                                [
-                                    "Y-RS",
-                                    "BdpUUCGvWbsYNBAk0FiuTw--~B"
-                                ],
-                                [
-                                    "Y-Path",
-                                    "f=187.169.66.119:64563;b=69.147.86.249:443;s=1;z=adYrEzESb6ZPf_DdjeZYtg--~B"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "e63fpule8oafu"
                                 ],
                                 [
                                     "uuid",
@@ -703,30 +295,6 @@
                                     "0"
                                 ],
                                 [
-                                    "Via",
-                                    "http/1.1 media-router-omegaplus52.prod.media.gq1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry11.prod.media.gq1.yahoo.com (ApacheTrafficServer [c sSf ])"
-                                ],
-                                [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "SAMEORIGIN"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "no-referrer-when-downgrade"
-                                ],
-                                [
                                     "Content-Encoding",
                                     "gzip"
                                 ],
@@ -741,14 +309,6 @@
                                 [
                                     "Connection",
                                     "keep-alive"
-                                ],
-                                [
-                                    "Strict-Transport-Security",
-                                    "max-age=31536000"
-                                ],
-                                [
-                                    "Expect-CT",
-                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
                                 ]
                             ]
                         }
@@ -776,22 +336,6 @@
                                     "0"
                                 ],
                                 [
-                                    "Via",
-                                    "http/1.1 media-router-omegaplus52.prod.media.gq1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry11.prod.media.gq1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
-                                ],
-                                [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "SAMEORIGIN"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "no-referrer-when-downgrade"
-                                ],
-                                [
                                     "Content-Encoding",
                                     "gzip"
                                 ],
@@ -804,28 +348,8 @@
                                     "20"
                                 ],
                                 [
-                                    "Strict-Transport-Security",
-                                    "max-age=15552000"
-                                ],
-                                [
                                     "Connection",
                                     "keep-alive"
-                                ],
-                                [
-                                    "Expect-CT",
-                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "Public-Key-Pins-Report-Only",
-                                    "max-age=2592000; pin-sha256=\"2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY=\"; pin-sha256=\"I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o=\"; pin-sha256=\"Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw=\"; pin-sha256=\"WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=\"; pin-sha256=\"i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=\"; pin-sha256=\"r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=\"; pin-sha256=\"uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=\"; pin-sha256=\"dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A=\"; includeSubdomains; report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only\""
                                 ]
                             ]
                         }
@@ -838,7 +362,7 @@
                         "version": "1.1",
                         "scheme": "http",
                         "method": "POST",
-                        "url": "http://data.real.flurry.com/aap.do",
+                        "url": "http://example.real.com/aap.do",
                         "content": {
                             "encoding": "plain",
                             "size": 381
@@ -851,12 +375,8 @@
                                     "application/octet-stream"
                                 ],
                                 [
-                                    "User-Agent",
-                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Hisense F23 Build/NRD90M)"
-                                ],
-                                [
                                     "Host",
-                                    "data.flurry.com"
+                                    "example.com"
                                 ],
                                 [
                                     "Connection",
@@ -869,62 +389,6 @@
                                 [
                                     "Content-Length",
                                     "381"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Name",
-                                    "android"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Version",
-                                    "7.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Device-Type",
-                                    "smartphone"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Robot",
-                                    "0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Override-Device-Type",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Classify-Method",
-                                    "from os default device type"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Time-Cost",
-                                    "2"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Marketing-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-flurry"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "3fobft9e8oahu"
                                 ],
                                 [
                                     "uuid",
@@ -950,12 +414,8 @@
                                     "application/octet-stream"
                                 ],
                                 [
-                                    "User-Agent",
-                                    "Dalvik/2.1.0 (Linux; U; Android 7.0; Hisense F23 Build/NRD90M)"
-                                ],
-                                [
                                     "Host",
-                                    "data.flurry.com"
+                                    "example.com"
                                 ],
                                 [
                                     "Accept-Encoding",
@@ -964,98 +424,6 @@
                                 [
                                     "Content-Length",
                                     "381"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Name",
-                                    "android"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Os-Version",
-                                    "7.0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Browser-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Name",
-                                    "unknown"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-App-Version",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Device-Type",
-                                    "smartphone"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Robot",
-                                    "0"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Override-Device-Type",
-                                    ""
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Classify-Method",
-                                    "from os default device type"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Time-Cost",
-                                    "2"
-                                ],
-                                [
-                                    "X-Yahoo-Dc-Marketing-Name",
-                                    ""
-                                ],
-                                [
-                                    "X-CDN",
-                                    "YCPI-flurry"
-                                ],
-                                [
-                                    "Client-ip",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "X-Forwarded-For",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "Via",
-                                    "http/1.1 e17.ycpi.daa.yahoo.com[cb9b4e94-5d42-43d4-8545-320033298ba2] (YahooTrafficServer)"
-                                ],
-                                [
-                                    "YahooRemoteIP",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "YahooRemoteIPSig",
-                                    "KTMlBLtiNkqfEeP.CMw2Xg--~D"
-                                ],
-                                [
-                                    "Y-RA",
-                                    "187.169.66.119"
-                                ],
-                                [
-                                    "Y-RP",
-                                    "64563"
-                                ],
-                                [
-                                    "Y-RS",
-                                    "BdpUUCGvWbsYNBAk0FiuTw--~B"
-                                ],
-                                [
-                                    "Y-Path",
-                                    "f=187.169.66.119:64563;b=69.147.86.249:443;s=1;z=adYrEzESb6ZPf_DdjeZYtg--~B"
-                                ],
-                                [
-                                    "Y-RID",
-                                    "3fobft9e8oahu"
                                 ],
                                 [
                                     "uuid",
@@ -1087,30 +455,6 @@
                                     "0"
                                 ],
                                 [
-                                    "Via",
-                                    "http/1.1 media-router-omegaplus261.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry28.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ])"
-                                ],
-                                [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "SAMEORIGIN"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "no-referrer-when-downgrade"
-                                ],
-                                [
                                     "Content-Encoding",
                                     "gzip"
                                 ],
@@ -1125,14 +469,6 @@
                                 [
                                     "Connection",
                                     "keep-alive"
-                                ],
-                                [
-                                    "Strict-Transport-Security",
-                                    "max-age=31536000"
-                                ],
-                                [
-                                    "Expect-CT",
-                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
                                 ]
                             ]
                         }
@@ -1160,22 +496,6 @@
                                     "0"
                                 ],
                                 [
-                                    "Via",
-                                    "http/1.1 media-router-omegaplus261.prod.media.bf1.yahoo.com (ApacheTrafficServer [cMsSf ]), http/1.1 media-router-flurry28.prod.media.bf1.yahoo.com (ApacheTrafficServer [c sSf ]), http/1.1 e17.ycpi.daa.yahoo.com (ApacheTrafficServer [cMsSf ])"
-                                ],
-                                [
-                                    "Server",
-                                    "ATS"
-                                ],
-                                [
-                                    "X-Frame-Options",
-                                    "SAMEORIGIN"
-                                ],
-                                [
-                                    "Referrer-Policy",
-                                    "no-referrer-when-downgrade"
-                                ],
-                                [
                                     "Content-Encoding",
                                     "gzip"
                                 ],
@@ -1188,28 +508,8 @@
                                     "20"
                                 ],
                                 [
-                                    "Strict-Transport-Security",
-                                    "max-age=15552000"
-                                ],
-                                [
                                     "Connection",
                                     "keep-alive"
-                                ],
-                                [
-                                    "Expect-CT",
-                                    "max-age=31536000, report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-expect-ct-report-only\""
-                                ],
-                                [
-                                    "X-XSS-Protection",
-                                    "1; mode=block"
-                                ],
-                                [
-                                    "X-Content-Type-Options",
-                                    "nosniff"
-                                ],
-                                [
-                                    "Public-Key-Pins-Report-Only",
-                                    "max-age=2592000; pin-sha256=\"2fRAUXyxl4A1/XHrKNBmc8bTkzA7y4FB/GLJuNAzCqY=\"; pin-sha256=\"I/Lt/z7ekCWanjD0Cvj5EqXls2lOaThEA0H2Bg4BT/o=\"; pin-sha256=\"Wd8xe/qfTwq3ylFNd3IpaqLHZbh2ZNCLluVzmeNkcpw=\"; pin-sha256=\"WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=\"; pin-sha256=\"i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=\"; pin-sha256=\"r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=\"; pin-sha256=\"uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=\"; pin-sha256=\"dolnbtzEBnELx/9lOEQ22e6OZO/QNb6VSSX2XHA3E7A=\"; includeSubdomains; report-uri=\"http://csp.yahoo.com/beacon/csp?src=yahoocom-hpkp-report-only\""
                                 ]
                             ]
                         }

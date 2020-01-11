@@ -38,7 +38,7 @@ server.Streams.stdout = Testers.ContainsExpression(
         "Verify that the proxy request path was used by the replay-client.")
 
 server.Streams.stdout += Testers.ContainsExpression(
-        '"client-ip": "187.188.63.1"',
+        '"client-ip": "10.10.10.1"',
         "Verify that the proxy request headers were used by the replay-client.")
 
 server.Streams.stdout += Testers.ExcludesExpression(
