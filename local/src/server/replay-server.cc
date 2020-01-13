@@ -1,3 +1,10 @@
+/** @file
+ * Implement the Proxy Verifier server.
+ *
+ * Copyright 2020, Oath Inc.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <array>
 #include <atomic>
 #include <condition_variable>

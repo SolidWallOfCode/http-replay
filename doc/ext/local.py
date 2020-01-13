@@ -1,7 +1,14 @@
+# @file
+#
+# Copyright 2020, Oath Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+
 from docutils import nodes
 from docutils.parsers import rst
 from sphinx.domains import Domain
 import os.path
+
 
 # This is a place to hang git file references.
 class HTTPReplayDomain(Domain):
@@ -13,6 +20,7 @@ class HTTPReplayDomain(Domain):
     label = 'HTTPReplay'
     data_version = 1
 
+
 def make_github_link(name, rawtext, text, lineno, inliner, options={}, content=[]):
     """
     This docutils role lets us link to source code via the handy :swoc:git: markup.
@@ -21,6 +29,7 @@ def make_github_link(name, rawtext, text, lineno, inliner, options={}, content=[
     ref = 'master'
     node = nodes.reference(rawtext, os.path.basename(text), refuri=url.format(ref, text), **options)
     return [node], []
+
 
 def setup(app):
     rst.roles.register_generic_role('arg', nodes.emphasis)

@@ -1,3 +1,10 @@
+/** @file
+ * Implement the Proxy Verifier client.
+ *
+ * Copyright 2020, Oath Inc.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "core/ArgParser.h"
 #include "core/HttpReplay.h"
 #include "swoc/bwf_ex.h"

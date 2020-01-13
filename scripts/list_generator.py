@@ -1,3 +1,9 @@
+#
+# Copyright 2020, Oath Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+
 def main():
     base_url = "http://example.one?"
     param = "parm{0:04d}={1:06X}"

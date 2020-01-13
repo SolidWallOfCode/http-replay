@@ -1,3 +1,7 @@
+#
+# Copyright 2020, Oath Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
 import copy
 import json
 import sys
