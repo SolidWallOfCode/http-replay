@@ -49,16 +49,17 @@ The following specifies that `X-Forwarded-For` should have been received from th
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+These instructions will get you a copy of the project up and running on your
+local machine for development and testing purposes.
 
 
 ### Prerequisites
 
 Building and running Proxy Verifier requires the following to be intsalled on the system:
 
-* SCons. Proxy Verifier is built using the [https://scons.org](Scons) build tool.
+* SCons. Proxy Verifier is built using the [SCons](https://scons.org) build tool.
 * OpenSSL
-* [https://nghttp2.org](Nghttp2)
+* [Nghttp2](https://nghttp2.org)
 
 ### Building
 
@@ -68,11 +69,11 @@ OpenSSL and Nghttp2 are linked against dynamically and have their own SCons argu
 scons -j8 --with-ssl=/path/to/openssl --with-nghttp2=/path/to/nghttp2 --use-env --cfg=release http-replay
 ```
 
-This will build `replay-client` `replay-server` in `bin/`.
+This will build `replay-client` `replay-server` in the `bin/` directory at the root of the repository.
 
 ### Running the Tests
 
-Verify Proxy ships with a suite of [https://bitbucket.org/autestsuite/reusable-gold-testing-system/src/master/](AuTests). To run them:
+Verify Proxy ships with a suite of [AuTests](https://bitbucket.org/autestsuite/reusable-gold-testing-system/src/master/). To run them:
 
 ```
 cd test/autests
