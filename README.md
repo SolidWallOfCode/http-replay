@@ -124,7 +124,7 @@ verification described therein.
 
 ## Contribute
 
-Please refer to [the Contributing.md file](Contributing.md) for information about how to get involved. We welcome issues, questions, and pull requests.
+Please refer to [CONTRIBUTING](CONTRIBUTING.md) for information about how to get involved. We welcome issues, questions, and pull requests.
 
 
 ## License
