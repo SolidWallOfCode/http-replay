@@ -47,7 +47,7 @@ The following specifies that `X-Forwarded-For` should have been received from th
   ],
 ```
 
-## Getting Started
+## Instsall
 
 These instructions will get you a copy of the project up and running on your
 local machine for development and testing purposes.
@@ -80,7 +80,7 @@ cd test/autests
 ./autest.sh --replay-bin /path/to/verifier/bin --ld-library-path "/path/to/opensl/lib;/path/to/nghttp2/lib" 
 ```
 
-### Running Proxy Verifier
+## Usage
 
 At a high level, Proxy Verifier is run in the following manner:
 
@@ -121,6 +121,11 @@ replay-client \
 With these two invocations, the replay-client and replay-server will replay the
 sessions and transactions in `<replay_file_directory>`  and perform any field
 verification described therein.
+
+## Contribute
+
+Please refer to [the Contributing.md file](Contributing.md) for information about how to get involved. We welcome issues, questions, and pull requests.
+
 
 ## License
 
