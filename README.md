@@ -126,7 +126,7 @@ verification described therein.
 
 Please refer to [CONTRIBUTING](CONTRIBUTING.md) for information about how to get involved. We welcome issues, questions, and pull requests.
 
-
 ## License
 
-This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) file for details
+This project is licensed under the terms of the Apache 2.0 open source license.
+Please refer to [LICENSE](LICENSE) for the full terms.
