@@ -2,7 +2,7 @@
 #
 #  Simple wrapper to run clang-format on a bunch of files
 #
-# Copyright 2020, Oath Inc.
+# Copyright 2020, Verizon Media
 # SPDX-License-Identifier: Apache-2.0
 #
 

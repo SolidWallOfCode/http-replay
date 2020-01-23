@@ -1,7 +1,7 @@
 /** @file
  * Powerful and easy-to-use command line parsing for ATS
  *
- * Copyright 2020, Oath Inc.
+ * Copyright 2020, Verizon Media
  * SPDX-License-Identifier: Apache-2.0
  */
 

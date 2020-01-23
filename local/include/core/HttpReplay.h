@@ -1,7 +1,7 @@
 /** @file
  * Common data structures and definitions for HTTP replay tools.
  *
- * Copyright 2020, Oath Inc.
+ * Copyright 2020, Verizon Media
  * SPDX-License-Identifier: Apache-2.0
  */
 

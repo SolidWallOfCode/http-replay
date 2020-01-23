@@ -1,7 +1,7 @@
 /** @file
  * Implement the Proxy Verifier client.
  *
- * Copyright 2020, Oath Inc.
+ * Copyright 2020, Verizon Media
  * SPDX-License-Identifier: Apache-2.0
  */
 
