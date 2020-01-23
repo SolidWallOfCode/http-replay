@@ -1,0 +1,25 @@
+``
+``Listening at 127.0.0.1:4443
+``Listening at 127.0.0.1:8083
+``Ready with 2 transactions.
+``Loading 1 replay files.
+``Presence Success: Key: "x-test-header", Value: "something"
+``Responding to request /config/settings.yaml with status 200.
+``Headers:
+- "host": "example.one"
+- "uuid": "1"
+- "x-test-header": "something"
+- "Accept-Encoding": "identity"
+
+``
+``Presence Violation: Absent. Key: "x-test-header"
+``
+``Responding to request /config/settings.yaml with status 200.
+``Request headers did not match expected request headers.
+``Headers:
+- "host": "example.one"
+- "uuid": "2"
+- "x-another-header": "request"
+- "Accept-Encoding": "identity"
+
+``

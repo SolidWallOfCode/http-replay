@@ -119,8 +119,6 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         u = urllib.parse.urlsplit(req.path)
         scheme, netloc, path = u.scheme, u.netloc, (u.path + '?' + u.query if u.query else u.path)
         assert scheme in ('http', 'https')
-        if netloc:
-            req.headers['Host'] = netloc
         setattr(req, 'headers', self.filter_headers(req.headers))
 
         replay_server = "127.0.0.1:{}".format(self.server_port)
@@ -234,7 +232,6 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         cookies = res.headers['Set-Cookie']
         if cookies:
-            cookies = '\n'.join(cookies)
             print("==== SET-COOKIE ====\n%s\n" % cookies)
 
         if res_body is not None:

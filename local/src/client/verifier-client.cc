@@ -131,7 +131,7 @@ swoc::Errata ClientReplayFileHandler::ssn_open(YAML::Node const &node) {
                 client_sni_node) {
               if (client_sni_node.IsScalar()) {
                 _ssn->_client_sni =
-                    HttpHeader::localize(client_sni_node.Scalar().c_str());
+                    HttpHeader::localize_lower(client_sni_node.Scalar().c_str());
               } else {
                 errata.error(
                     R"(Session at "{}":{} has a value for key "{}" that is not a scalar as required.)",
@@ -275,9 +275,6 @@ swoc::Errata Run_Session(Ssn const &ssn, swoc::IPEndpoint const &target,
   errata.note(session->do_connect(real_target));
   if (errata.is_ok()) {
     errata.note(session->run_transactions(ssn._transactions, real_target));
-  }
-  if (!errata.is_ok()) {
-    std::cerr << errata;
   }
   return std::move(errata);
 }

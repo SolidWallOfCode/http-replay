@@ -1,0 +1,30 @@
+``
+``Absence Success: Key: "x-another-response"
+``Absence Violation: Present. Key: "x-test-header", Value: "backAtYou"
+``
+``Absence Violation: Present. Key: "x-another-response", Value: "response"
+``Absence Success: Key: "x-test-header"
+``Headers:
+- "content-type": "text/html"
+- "content-length": "16"
+- "uuid": "1"
+- "x-test-header": "backAtYou"
+
+``Status: "200"
+``
+``Failed url=http://example.one/config/settings.yaml.
+``
+``Headers:
+- "content-type": "text/html"
+- "content-length": "32"
+- "uuid": "2"
+- "x-another-response": "response"
+
+``Status: "200"
+``
+``Failed url=http://example.one/config/settings.yaml.
+``
+``Starting session "yaml_specified.yaml":4 protocol=http.
+``2 transactions in 1 sessions``
+``Parsed 2 transactions.
+``

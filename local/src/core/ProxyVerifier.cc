@@ -404,7 +404,6 @@ swoc::Errata Session::run_transaction(const Txn &txn) {
         if (rsp_hdr.verify_headers(*txn._rsp._fields_rules)) {
           errata.error(
               R"(Response headers did not match expected response headers.)");
-          return errata;
         }
         errata.diag("Reading response body offset={}.",
                     w.view().substr(body_offset));
@@ -454,15 +453,9 @@ swoc::Errata Session::run_transactions(const std::list<Txn> &txn_list,
     if (this->is_closed()) {
       this->do_connect(real_target);
     }
-    if (errata.is_ok()) {
-      errata = this->run_transaction(txn);
-      if (!errata.is_ok()) {
-        errata.error(R"(Failed url={}.)", txn._req._url);
-        std::cerr << errata;
-      }
-    } else {
-      std::cerr << errata;
-      break;
+    errata.note(this->run_transaction(txn));
+    if (!errata.is_ok()) {
+      errata.error(R"(Failed url={}.)", txn._req._url);
     }
   }
   return std::move(errata);
@@ -615,15 +608,9 @@ swoc::Errata H2Session::run_transactions(const std::list<Txn> &txn_list,
     if (this->is_closed()) {
       this->do_connect(real_target);
     }
-    if (errata.is_ok()) {
-      errata = this->run_transaction(txn);
-      if (!errata.is_ok()) {
-        errata.error(R"(Failed url={}.)", txn._req._url);
-        std::cerr << errata;
-      }
-    } else {
-      std::cerr << errata;
-      break;
+    errata.note(this->run_transaction(txn));
+    if (!errata.is_ok()) {
+      errata.error(R"(Failed url={}.)", txn._req._url);
     }
   }
   recv_callback(this->get_session(), nullptr, 0, 0, this);
@@ -1220,8 +1207,8 @@ ChunkCodex::transmit(Session &session, swoc::TextView data, size_t chunk_size) {
 };
 
 void HttpHeader::global_init() {
-  FIELD_CONTENT_LENGTH = localize("Content-Length"_tv);
-  FIELD_TRANSFER_ENCODING = localize("Transfer-Encoding"_tv);
+  FIELD_CONTENT_LENGTH = localize_lower("Content-Length"_tv);
+  FIELD_TRANSFER_ENCODING = localize_lower("Transfer-Encoding"_tv);
 
   STATUS_NO_CONTENT[100] = true;
   STATUS_NO_CONTENT[204] = true;
@@ -1406,14 +1393,16 @@ HttpFields::parse_fields_and_rules(YAML::Node const &fields_rules_node,
     if (!node.IsSequence()) {
       errata.error("Field or rule at {} is not a sequence as required.",
                    node.Mark());
+      continue;
     }
     const auto node_size = node.size();
     if (node_size != 2 && node_size != 3) {
       errata.error("Field or rule node at {} is not a sequence of length 2 "
                    "or 3 as required.",
                    node.Mark());
+      continue;
     }
-    TextView name{HttpHeader::localize(node[YAML_RULE_NAME_KEY].Scalar())};
+    TextView name{HttpHeader::localize_lower(node[YAML_RULE_NAME_KEY].Scalar())};
     auto const& value { node[YAML_RULE_DATA_KEY].Scalar() };
     _fields.emplace(name, value);
     if (node_size == 2 && assume_equality_rule) {
@@ -1424,6 +1413,7 @@ HttpFields::parse_fields_and_rules(YAML::Node const &fields_rules_node,
       if (!tester) {
         errata.error("Field rule at {} does not have a valid flag ({})",
                      node.Mark(), node[YAML_RULE_TYPE_KEY].Scalar());
+        continue;
       } else {
         _rules[name] = tester;
       }
@@ -1446,7 +1436,7 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
   swoc::Errata errata;
 
   if (node[YAML_HTTP_VERSION_KEY]) {
-    _http_version = this->localize(node[YAML_HTTP_VERSION_KEY].Scalar());
+    _http_version = this->localize_lower(node[YAML_HTTP_VERSION_KEY].Scalar());
   } else {
     _http_version = "1.1";
   }
@@ -1649,17 +1639,35 @@ HttpHeader::HttpHeader(bool verify_strictly)
     : _verify_strictly{verify_strictly}, _fields_rules{
                                              std::make_shared<HttpFields>()} {}
 
-swoc::TextView HttpHeader::localize(char const *c_str) {
-  return self_type::localize(TextView{c_str, strlen(c_str) + 1});
+swoc::TextView HttpHeader::localize(char const *text) {
+  return self_type::localize_helper(TextView{text, strlen(text) + 1},
+      !SHOULD_LOWER);
+}
+
+swoc::TextView HttpHeader::localize_lower(char const *text) {
+  return self_type::localize_helper(TextView{text, strlen(text) + 1},
+      SHOULD_LOWER);
 }
 
 swoc::TextView HttpHeader::localize(TextView text) {
+  return HttpHeader::localize_helper(text, !SHOULD_LOWER);
+}
+
+swoc::TextView HttpHeader::localize_lower(TextView text) {
+  return HttpHeader::localize_helper(text, SHOULD_LOWER);
+}
+
+swoc::TextView HttpHeader::localize_helper(TextView text, bool should_lower) {
   auto spot = _names.find(text);
   if (spot != _names.end()) {
     return *spot;
   } else if (!_frozen) {
     auto span{_arena.alloc(text.size()).rebind<char>()};
-    std::transform(text.begin(), text.end(), span.begin(), &tolower);
+    if (should_lower) {
+      std::transform(text.begin(), text.end(), span.begin(), &tolower);
+    } else {
+      std::copy(text.begin(), text.end(), span.begin());
+    }
     TextView local{span.data(), text.size()};
     _names.insert(local);
     return local;
@@ -1731,7 +1739,7 @@ HttpHeader::parse_request(swoc::TextView data) {
           continue;
         }
         auto value{field};
-        auto name{this->localize(value.take_prefix_at(':'))};
+        auto name{this->localize_lower(value.take_prefix_at(':'))};
         value.trim_if(&isspace);
         if (name) {
           _fields_rules->_fields.emplace(name, value);
@@ -1773,7 +1781,6 @@ HttpHeader::parse_response(swoc::TextView data) {
           continue;
         }
         auto value{field};
-        //        auto name{this->localize(value.take_prefix_at(':'))};
         auto name{value.take_prefix_at(':')};
         value.trim_if(&isspace);
         if (name) {

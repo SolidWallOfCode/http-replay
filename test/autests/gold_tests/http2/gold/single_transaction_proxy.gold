@@ -1,7 +1,7 @@
 ``
 ==== REQUEST HEADERS ====
 
-:method: get
+:method: GET
 :scheme: https
 :path: /path
 :authority: example.data.com
@@ -13,7 +13,7 @@ accept-encoding: gzip
 ==== REQUEST BODY ====
 b''
 
-200 ok
+200 OK
 
 ==== RESPONSE HEADERS ====
 age: 0

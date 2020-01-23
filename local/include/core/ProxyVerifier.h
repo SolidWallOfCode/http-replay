@@ -481,18 +481,25 @@ protected:
     HttpHeader const &_hdr;
   };
 
-  /** Convert @a name to a localized view.
+public:
+  /** Convert @a text to a localized view.
    *
-   * @param name Text to localize.
-   * @return The localized view, or @a name if localization is frozen and @a
-   * name is not found.
+   * @param[in] text Text to localize.
+   * @return The localized view, or @a text if localization is frozen and @a
+   * text is not found.
    *
-   * @a name will be localized if string localization is not frozen, or @a name
+   * @a text will be localized if string localization is not frozen, or @a text
    * is already localized.
    */
-public:
   static TextView localize(TextView text);
-  static TextView localize(char const *c_str);
+  static TextView localize(char const *text);
+
+  /** Convert @a name to a localized view converted to lower case characters.
+   *
+   * @see localize documentation for parameter descriptions.
+   */
+  static TextView localize_lower(TextView text);
+  static TextView localize_lower(char const *text);
 
 protected:
   /// Encoding for input text.
@@ -518,6 +525,24 @@ protected:
   static swoc::MemArena _arena;
 
   bool _verify_strictly;
+
+private:
+  /** A convenience boolean for the corresponding parameter to localize_helper.
+   */
+  static constexpr bool SHOULD_LOWER = true;
+
+  /** Convert @a text to a localized view.
+   *
+   * @param[in] text Text to localize.
+   * @param[in] should_lower Whether text should be converted to lower case
+   *   letters.
+   * @return The localized view, or @a text if localization is frozen and @a
+   * text is not found.
+   *
+   * @a text will be localized if string localization is not frozen, or @a text
+   * is already localized.
+   */
+  static TextView localize_helper(TextView text, bool should_lower);
 };
 
 struct Txn {

@@ -67,3 +67,43 @@ server.Streams.stdout += Testers.ContainsExpression(
 server.Streams.stdout += Testers.ExcludesExpression(
         "Violation:",
         "There should be no verification errors because there are none added.")
+
+#
+# Test 3: Verify correct behavior with a YAML-specified replay file.
+#
+r = Test.AddTestRun("Verify HTTP/1 processing of a YAML-specified replay file")
+client = r.AddClientProcess("client3", "replay_files/yaml_specified",
+                            http_ports=[8082], other_args="--verbose diag")
+server = r.AddServerProcess("server3", "replay_files/yaml_specified",
+                            http_ports=[8083], other_args="--verbose diag")
+proxy = r.AddProxyProcess("proxy3", listen_port=8082, server_port=8083)
+
+
+proxy.Streams.stdout = "gold/yaml_specified_proxy.gold"
+client.Streams.stdout = "gold/yaml_specified_client.gold"
+server.Streams.stdout = "gold/yaml_specified_server.gold"
+
+
+#
+# Test 4: Verify correct handling of an empty field.
+#
+r = Test.AddTestRun("Verify correct handling of an empty header field")
+client = r.AddClientProcess("client4", "replay_files/empty_field",
+                            http_ports=[8082], other_args="--verbose diag")
+server = r.AddServerProcess("server4", "replay_files/empty_field",
+                            http_ports=[8083], other_args="--verbose diag")
+proxy = r.AddProxyProcess("proxy4", listen_port=8082, server_port=8083)
+
+client.ReturnCode = 1
+server.ReturnCode = 1
+
+# Due to the parsing failure, the server will not listen on the port.
+# Thus the standard ready criteria will not work.
+server.Ready = None
+
+client.Streams.stdout = Testers.ContainsExpression(
+        "Field or rule at line .* is not a sequence as required",
+        "Verify that we inform the user of the malformed field.")
+server.Streams.stdout = Testers.ContainsExpression(
+        "Field or rule at line .* is not a sequence as required",
+        "Verify that we inform the user of the malformed field.")
