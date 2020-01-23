@@ -13,31 +13,31 @@ import os
 def check_file(dir_name, file_name):
     if not os.path.isfile(file_name):
         hint = ''
-        if os.path.isfile(os.path.join(dir_name, 'bin', 'replay-server')):
-            hint = "\nDid you mean '--replay-bin {}'?".\
+        if os.path.isfile(os.path.join(dir_name, 'bin', 'verifier-server')):
+            hint = "\nDid you mean '--verifier-bin {}'?".\
                 format(os.path.join(dir_name, 'bin'))
-        host.WriteError("replay-server is not found. Aborting tests - "
+        host.WriteError("verifier-server is not found. Aborting tests - "
                         "Bad build or install.{}".format(hint), show_stack=False)
 
 
-if Arguments.replay_bin is not None:
+if Arguments.verifier_bin is not None:
     # Add environment variables
-    ENV['REPLAY_BIN'] = Arguments.replay_bin
+    ENV['VERIFIER_BIN'] = Arguments.verifier_bin
 
-if ENV['REPLAY_BIN'] is not None:
+if ENV['VERIFIER_BIN'] is not None:
     # Add variables for Tests
-    replay_bin = ENV['REPLAY_BIN']
-    if not os.path.isdir(replay_bin):
-        host.WriteError("--replay-bin requires a directory", show_stack=False)
-    replay_client = os.path.join(replay_bin, "replay-client")
-    check_file(replay_bin, replay_client)
-    replay_server = os.path.join(replay_bin, "replay-server")
-    check_file(replay_bin, replay_server)
+    verifier_bin = ENV['VERIFIER_BIN']
+    if not os.path.isdir(verifier_bin):
+        host.WriteError("--verifier-bin requires a directory", show_stack=False)
+    verifier_client = os.path.join(verifier_bin, "verifier-client")
+    check_file(verifier_bin, verifier_client)
+    verifier_server = os.path.join(verifier_bin, "verifier-server")
+    check_file(verifier_bin, verifier_server)
 
     new_variables = {
-            'REPLAY_BIN': replay_bin,
-            'REPLAY_CLIENT': replay_client,
-            'REPLAY_SERVER': replay_server,
+            'VERIFIER_BIN': verifier_bin,
+            'VERIFIER_CLIENT': verifier_client,
+            'VERIFIER_SERVER': verifier_server,
             }
     Variables.update(new_variables)
 

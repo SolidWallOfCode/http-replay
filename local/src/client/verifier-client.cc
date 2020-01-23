@@ -6,7 +6,7 @@
  */
 
 #include "core/ArgParser.h"
-#include "core/HttpReplay.h"
+#include "core/ProxyVerifier.h"
 #include "swoc/bwf_ex.h"
 #include "swoc/bwf_ip.h"
 #include "swoc/bwf_std.h"

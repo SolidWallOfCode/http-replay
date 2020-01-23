@@ -20,5 +20,5 @@ env.SdkInclude(
 )
 
 env.SdkLib(
-    env.StaticLibrary("replay-core",["ArgParser.cc", "HttpReplay.cc"])
+    env.StaticLibrary("verifier-core",["ArgParser.cc", "ProxyVerifier.cc"])
 )

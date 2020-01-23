@@ -23,7 +23,7 @@ def create_address_argument(ports):
             is_first = False
         else:
             argument += ','
-        # We'll have a trailing ',', but replay-server handles that fine.
+        # We'll have a trailing ',', but verifier-server handles that fine.
         argument += "127.0.0.1:{}".format(port)
     argument += '"'
     return argument
@@ -32,12 +32,12 @@ def create_address_argument(ports):
 def _configure_server(obj, process, name, replay_dir, http_ports=[8080], https_ports=[4443],
                       ssl_cert='', other_args=''):
     """
-    Configure the provided process to run a replay-server command.
+    Configure the provided process to run a verifier-server command.
 
     Args
         obj: An object that has a RunDirectory attribute.
 
-        process: (Process) The test process to configure for replay-server.
+        process: (Process) The test process to configure for verifier-server.
 
         For all other arguments, see MakeServerProcess.
     """
@@ -46,15 +46,15 @@ def _configure_server(obj, process, name, replay_dir, http_ports=[8080], https_p
     server_dir = os.path.join(obj.RunDirectory, name)
 
     # Create a link of the binary to the rundir and set up the PATH variable.
-    # This will be the replay-server that gets run.
+    # This will be the verifier-server that gets run.
     bin_dir = 'bin'
     process.Env['SERVER_BIN_PATH'] = bin_dir
     bin_path = os.path.join(server_dir, bin_dir)
     process.Env['PATH'] = bin_path + os.pathsep + process.ComposeEnv()['PATH']
-    process.Setup.Copy(process.ComposeVariables().REPLAY_BIN, bin_path, CopyLogic.SoftFiles)
+    process.Setup.Copy(process.ComposeVariables().VERIFIER_BIN, bin_path, CopyLogic.SoftFiles)
 
-    # Configure the replay-server command line arguments.
-    command = "replay-server run "
+    # Configure the verifier-server command line arguments.
+    command = "verifier-server run "
 
     if http_ports:
         command += "--listen "
@@ -101,13 +101,13 @@ def _configure_server(obj, process, name, replay_dir, http_ports=[8080], https_p
 def MakeServerProcess(test, name, replay_dir, http_ports=[8080],
                       https_ports=[4443], ssl_cert='', other_args=''):
     """
-    Create a replay-server process.
+    Create a verifier-server process.
 
     Args:
         test: (Test) The Test object being updated with the server process.
 
-        name: (str) The name to apply to this particular replay-server instance.
-            Individual replay-server processes must have unique names to
+        name: (str) The name to apply to this particular verifier-server instance.
+            Individual verifier-server processes must have unique names to
             distinguish between them.
 
         replay_dir: (path) The directory containing the replay files for the
@@ -120,11 +120,11 @@ def MakeServerProcess(test, name, replay_dir, http_ports=[8080],
         ssl_cert: (path) The location of the cert for HTTPS encryption. If this
             is not provided and https_ports is non-empty, the root-level
             server_test.pem will be searched for and used if it can be found.
-            To explicitly test replay-server with no --cert argument, pass in
+            To explicitly test verifier-server with no --cert argument, pass in
             None for ssl_cert. Whitespace can be passed in to test --cert with
             an empty argument.
 
-        other_args: (str) Any other arbitrary options to pass to replay-server.
+        other_args: (str) Any other arbitrary options to pass to verifier-server.
 
     Raises:
         ValueError if https_ports is non-empty and a valid ssl_cert could not
@@ -139,7 +139,7 @@ def MakeServerProcess(test, name, replay_dir, http_ports=[8080],
 def AddServerProcess(run, name, replay_dir, http_ports=[8080], https_ports=[4443],
                      ssl_cert='', other_args=''):
     """
-    Create a replay-server process and configure it for the given TestRun.
+    Create a verifier-server process and configure it for the given TestRun.
 
     Args:
         run: (TestRun) The test run to which the server process is added.

@@ -1,11 +1,12 @@
 Import("*")
-PartName("replay-server")
+PartName("verifier-client")
 
 env.DependsOn([
     Component("openssl"),
+    Component("nghttp2"),
     Component("swoc++"),
     Component("yaml-cpp"),
-    Component("http-replay.core"),
+    Component("proxy-verifier.core"),
 ])
 
 env.AppendUnique(
@@ -14,6 +15,6 @@ env.AppendUnique(
 
 env.InstallBin(
     env.SetRPath(  # allow fancy patchelf runpath setting it defined
-        env.Program("replay-server", ["replay-server.cc"])
+        env.Program("verifier-client", ["verifier-client.cc"])
     )
 )

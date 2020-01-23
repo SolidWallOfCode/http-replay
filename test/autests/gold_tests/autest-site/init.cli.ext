@@ -20,7 +20,7 @@ if AuTestVersion() < autest_version:
         "pip install --upgrade autest\n".format(ver=autest_version), show_stack=False)
 
 
-Settings.path_argument(["--replay-bin"],
+Settings.path_argument(["--verifier-bin"],
                        required=True,
                        help="A user provided directory to containing the client and server replay binaries")
 

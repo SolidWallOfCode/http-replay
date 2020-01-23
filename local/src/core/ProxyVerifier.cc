@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "core/HttpReplay.h"
+#include "core/ProxyVerifier.h"
 #include "core/yaml_util.h"
 
 #include <algorithm>

@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 #include "core/ArgParser.h"
-#include "core/HttpReplay.h"
+#include "core/ProxyVerifier.h"
 #include "swoc/BufferWriter.h"
 #include "swoc/Errata.h"
 #include "swoc/MemArena.h"

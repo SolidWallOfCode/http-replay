@@ -1,5 +1,5 @@
 /** @file
- * Common data structures and definitions for HTTP replay tools.
+ * Common data structures and definitions for Proxy Verifier tools.
  *
  * Copyright 2020, Verizon Media
  * SPDX-License-Identifier: Apache-2.0
@@ -122,9 +122,9 @@ BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
  * Field Verification
  *
  * The objects below implement header verification. Header verification is used
- * by the replay-server to verify header expectations for the requests coming
+ * by the verifier-server to verify header expectations for the requests coming
  * from the proxy. Correspondingly, header verification is also used by the
- * replay-client to verify header expectations for the responses coming from
+ * verifier-client to verify header expectations for the responses coming from
  * the proxy.
  *
  * A RuleCheck is the base class for the three types of implemented
@@ -139,14 +139,14 @@ BufferWriter &bwformat(BufferWriter &w, bwf::Spec const &spec,
  *   3. Equality: an HTTP header with the given name and value should exist
  *   in the request or response being verified.
  *
- * Thus rules are the expectations that are provided to http-replay concerning
+ * Thus rules are the expectations that are provided to proxy-verifier concerning
  * transactions coming out of the proxy. In the absence of a rule, no
  * verification is done.
  *
  * Rules are applied in one of three ways, presented here in order from broad
  * to specific:
  *
- *   1. Via the --strict command line argument. This tells http-replay to treat
+ *   1. Via the --strict command line argument. This tells proxy-verifier to treat
  *   each proxy request header field without a verification rule as if it had
  *   an equality verification value.
  *

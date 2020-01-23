@@ -1,26 +1,26 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(replay-core)
+project(verifier-core)
 set(CMAKE_CXX_STANDARD 17)
 include(GNUInstallDirs)
 
 find_package(OpenSSL REQUIRED)
 
-add_library(replay-core STATIC
+add_library(verifier-core STATIC
     ArgParser.cc
     HttpReplay.cc
 )
 
-target_include_directories(replay-core PUBLIC)
-target_link_libraries(replay-core PUBLIC PkgConfig::libswoc++ PkgConfig::yaml-cpp)
+target_include_directories(verifier-core PUBLIC)
+target_link_libraries(verifier-core PUBLIC PkgConfig::libswoc++ PkgConfig::yaml-cpp)
 
-install(TARGETS replay-core ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(TARGETS replay-core
-    EXPORT replay-core-config
+install(TARGETS verifier-core ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS verifier-core
+    EXPORT verifier-core-config
     ARCHIVE DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
-install(EXPORT replay-core-config
-    NAMESPACE replay-core::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/replay-core
+install(EXPORT verifier-core-config
+    NAMESPACE verifier-core::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/verifier-core
     )
-export(TARGETS replay-core FILE replay-core-config.cmake)
+export(TARGETS verifier-core FILE verifier-core-config.cmake)
