@@ -25,7 +25,7 @@ def make_github_link(name, rawtext, text, lineno, inliner, options={}, content=[
     """
     This docutils role lets us link to source code via the handy :swoc:git: markup.
     """
-    url = 'https://git.ouroath.com/Edge/http-replay/blob/{}/{}'
+    url = 'https://github.com/yahoo/proxy-verifier/blob/{}/{}'
     ref = 'master'
     node = nodes.reference(rawtext, os.path.basename(text), refuri=url.format(ref, text), **options)
     return [node], []

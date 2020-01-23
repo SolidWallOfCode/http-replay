@@ -8,8 +8,6 @@ DependsOn([
     "http-replay.replay-server"
 ])
 
-env.Part("${PART_NAME}.rpm.part")
-
 env.Part("../src/core/core.part")
 env.Part("../src/client/replay-client.part")
 env.Part("../src/server/replay-server.part")

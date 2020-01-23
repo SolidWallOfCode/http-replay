@@ -2,8 +2,6 @@ from parts import *
 
 #enable smart linking
 SetOptionDefault("LINKFLAGS", ['-Wl,--copy-dt-needed-entries', '-Wl,--as-needed'])
-SetOptionDefault("PACKAGE_ROOT", "/opt/oath/${PART_ROOT_NAME}/${PART_SHORT_VERSION}")
-SetOptionDefault("OATH_RPM_NAME", '${RPM_PREFIX}${PART_ROOT_NAME}${PART_SHORT_VERSION}')
 SetOptionDefault("INSTALL_LIB",  "#lib")
 SetOptionDefault("INSTALL_BIN",  "#bin")
 SetOptionDefault("INSTALL_INCLUDE",  "#include")
