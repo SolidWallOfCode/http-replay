@@ -871,12 +871,6 @@ static int on_data_chunk_recv_cb(nghttp2_session *session, uint8_t flags,
 }
 
 H2Session::H2Session() {
-  // TODO - will not compile because I need to figure out what USER_DATA is
-  // nghttp2_session_client_new(&_session, callbacks, USER_DATA);
-
-  /*rv = nghttp2_submit_settings(_session, NGHTTP2_FLAG_NONE, NULL, 0);*/ // probably
-                                                                          // not
-                                                                          // needed
   callbacks = nullptr;
 }
 
@@ -2148,14 +2142,11 @@ ThreadInfo *ThreadPool::get_worker() {
         // Just sleep until a thread comes back
         _threadPoolCvar.wait(lock);
       } else { // Make a new thread
-        // Some ugly stuff so that the thread can put a pointer to it's @c
-        // std::thread in it's info. Circular dependency - there's no object
-        // until after the constructor is called but the constructor needs
-        // to be called to get the object. Sigh.
-        _allThreads.emplace_back();
-        // really? I have to do this to get an iterator / pointer to the
-        // element I just added?
-        std::thread *t = &*(std::prev(_allThreads.end()));
+        // This is circuitous, but we do this so that the thread can put a
+        // pointer to it's @c std::thread in it's info. Note the circular
+        // dependency: there's no object until after the constructor is called
+        // but the constructor needs to be called to get the object. Sigh.
+        std::thread *t = &_allThreads.emplace_back();
         *t = this->make_thread(t);
         _threadPoolCvar.wait(lock); // expect the new thread to enter
                                     // itself in the pool and signal.
