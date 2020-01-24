@@ -1414,9 +1414,10 @@ HttpFields::parse_fields_and_rules(YAML::Node const &fields_rules_node,
                    node.Mark());
     }
     TextView name{HttpHeader::localize(node[YAML_RULE_NAME_KEY].Scalar())};
-    _fields[name] = node[YAML_RULE_DATA_KEY].Scalar();
+    auto const& value { node[YAML_RULE_DATA_KEY].Scalar() };
+    _fields.emplace(name, value);
     if (node_size == 2 && assume_equality_rule) {
-      _rules[name] = RuleCheck::make_equality(name, _fields[name]);
+      _rules.emplace(name, RuleCheck::make_equality(name, value));
     } else if (node_size == 3) {
       // Contans a verification rule.
       std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
@@ -1733,7 +1734,7 @@ HttpHeader::parse_request(swoc::TextView data) {
         auto name{this->localize(value.take_prefix_at(':'))};
         value.trim_if(&isspace);
         if (name) {
-          _fields_rules->_fields[name] = value;
+          _fields_rules->_fields.emplace(name, value);
           if (icompare(name, "expect") && icompare(value, "100-continue")) {
             _send_continue = true;
           }
@@ -1776,7 +1777,7 @@ HttpHeader::parse_response(swoc::TextView data) {
         auto name{value.take_prefix_at(':')};
         value.trim_if(&isspace);
         if (name) {
-          _fields_rules->_fields[name] = value;
+          _fields_rules->_fields.emplace(name, value);
         } else {
           zret = PARSE_ERROR;
           zret.errata().error(R"(Malformed field "{}".)", field);

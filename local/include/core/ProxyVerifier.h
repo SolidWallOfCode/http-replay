@@ -329,7 +329,7 @@ class HttpFields {
   /// std::unordered_map that returns RuleChecks for given field names
   using Rules = std::unordered_map<swoc::TextView, std::shared_ptr<RuleCheck>,
                                    Hash, Hash>;
-  using Fields = std::unordered_map<swoc::TextView, std::string, Hash, Hash>;
+  using Fields = std::unordered_multimap<swoc::TextView, std::string, Hash, Hash>;
 
 public:
   Rules _rules;   ///< Maps field names to functors.
