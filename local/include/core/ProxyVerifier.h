@@ -200,16 +200,16 @@ public:
 
   /** Generate @a RuleCheck with @a node with factory pattern.
    *
-   * @param node YAML Array node with (in order) the name of the field, data for
-   * the field (null if not necessary), and rule for the field (equals, absence,
-   * or presence)
-   * @param name TextView holding the name of the field (redundant with above so
-   * that localization is not performed twice when making TextViews)
+   * @param name TextView holding the name of the field. This should be localized.
+   * @param value TextView holding the value of the field. This should be localized.
+   * @param rule_type TextView holding the verification rule value from the node. This
+   *   need not be localized.
    * @return A pointer to the RuleCheck instance generated, holding a key (and
    * potentially value) TextView for the rule to compare inputs to
    */
-  static std::shared_ptr<RuleCheck> find(const YAML::Node &node,
-                                         swoc::TextView name);
+  static std::shared_ptr<RuleCheck> find(swoc::TextView localized_name,
+                                         swoc::TextView localized_value,
+                                         swoc::TextView rule_type);
 
   /** Generate @a EqualityCheck, invoked by the factory function when the
    * "equals" flag is present.
@@ -483,6 +483,16 @@ protected:
 
 public:
   /** Convert @a text to a localized view.
+   *
+   * In the context of Proxy Verifier, localization is the process by which
+   * references to memory in one region are copied to a memory arena. This is
+   * used during configuration processing to take configuration node strings,
+   * the memory of which will be freed after processing the config, and copy
+   * those strings into an arena which can be used during the processing of
+   * HTTP transactions later in the program's lifetime.
+   *
+   * That being the case, these localization functions should only be used
+   * while processing the configuration files and not after.
    *
    * @param[in] text Text to localize.
    * @return The localized view, or @a text if localization is frozen and @a

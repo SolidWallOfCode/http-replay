@@ -1,5 +1,5 @@
 '''
-Verify basic HTTP/1.x functionality.
+Verify correct field verification behavior.
 '''
 # @file
 #
@@ -12,10 +12,13 @@ Test.Summary = '''
 Verify correct field verification behavior.
 '''
 
+#
+# Test 1: Verify field verification in a JSON replay file.
+#
 r = Test.AddTestRun("Verify field verification works for a simple HTTP transaction")
-client = r.AddClientProcess("client", "http_replay_file", http_ports=[8080], other_args="--verbose diag")
-server = r.AddServerProcess("server", "http_replay_file", http_ports=[8081], other_args="--verbose diag")
-proxy = r.AddProxyProcess("proxy", listen_port=8080, server_port=8081)
+client = r.AddClientProcess("client1", "http_replay_files/json", http_ports=[8080], other_args="--verbose diag")
+server = r.AddServerProcess("server1", "http_replay_files/json", http_ports=[8081], other_args="--verbose diag")
+proxy = r.AddProxyProcess("proxy1", listen_port=8080, server_port=8081)
 
 # Verify a success and failure of each validation in the request.
 server.Streams.stdout = Testers.ContainsExpression(
@@ -66,3 +69,39 @@ client.Streams.stdout += Testers.ContainsExpression(
         ('Equals Violation: Different. Key: "x-testheader", '
             'Correct Value: "from_proxy_response", Actual Value: "from_server_response"'),
         'Validation should complain that the "x-testheader" value differs from the expected value.')
+
+#
+# Test 2: Verify field verification in a YAML replay file.
+#
+r = Test.AddTestRun("Verify field verification works for a simple HTTP transaction")
+client = r.AddClientProcess("client2", "http_replay_files/yaml", http_ports=[8080], other_args="--verbose diag")
+server = r.AddServerProcess("server2", "http_replay_files/yaml", http_ports=[8081], other_args="--verbose diag")
+proxy = r.AddProxyProcess("proxy2", listen_port=8080, server_port=8081)
+
+client.Streams.stdout += Testers.ContainsExpression(
+        'Absence Success: Key: "x-not-a-header"',
+        'Validation should be happy that "X-Not-A-Header" is missing.')
+
+client.Streams.stdout += Testers.ContainsExpression(
+        'Equals Success: Key: "set-cookie", Value: "ABCD"',
+        'Validation should be happy that "Set-Cookie" had the expected header.')
+
+client.Streams.stdout += Testers.ContainsExpression(
+        'Equals Success: Key: "set-cookie", Value: "ABCD"',
+        'Validation should be happy that "Set-Cookie" had the expected header.')
+
+client.Streams.stdout += Testers.ContainsExpression(
+        'Presence Violation: Absent. Key: "x-does-not-exist"',
+        'Validation should complain that "X-Does-Not-Exist" is not present.')
+
+server.Streams.stdout += Testers.ContainsExpression(
+        'Equals Violation: Different. Key: "x-test-request", Correct Value: "rEQUESTdATA", Actual Value: "RequestData"',
+        'Validation should complain that "X-Test-Request" is different.')
+
+server.Streams.stdout += Testers.ContainsExpression(
+        'Absence Violation: Present. Key: "x-test-present", Value: "It\'s there"',
+        'Validation should complain that "X-Test-Pressent" is present.')
+
+server.Streams.stdout += Testers.ContainsExpression(
+        'Equals Success: Key: "cookie", Value: "',
+        'Validation should complainthat "X-Does-Not-Exist" is not present.')

@@ -1227,16 +1227,17 @@ void RuleCheck::options_init() {
   options[swoc::TextView(YAML_RULE_ABSENCE)] = make_absence;
 }
 
-std::shared_ptr<RuleCheck> RuleCheck::find(const YAML::Node &node,
-                                           swoc::TextView name) {
+std::shared_ptr<RuleCheck> RuleCheck::find(swoc::TextView localized_name,
+                                           swoc::TextView localized_value,
+                                           swoc::TextView rule_type)
+{
   swoc::Errata errata;
-  auto flag_identifier = swoc::TextView(node[YAML_RULE_TYPE_KEY].Scalar());
-  auto fn_iter = options.find(flag_identifier);
+  auto fn_iter = options.find(rule_type);
   if (fn_iter == options.end()) {
-    errata.info(R"(Invalid Test: Key: "{}")", flag_identifier);
+    errata.info(R"(Invalid Test: Key: "{}")", rule_type);
     return nullptr;
   }
-  return fn_iter->second(name, node[YAML_RULE_DATA_KEY].Scalar());
+  return fn_iter->second(localized_name, localized_value);
 }
 
 std::shared_ptr<RuleCheck> RuleCheck::make_equality(swoc::TextView name,
@@ -1403,16 +1404,17 @@ HttpFields::parse_fields_and_rules(YAML::Node const &fields_rules_node,
       continue;
     }
     TextView name{HttpHeader::localize_lower(node[YAML_RULE_NAME_KEY].Scalar())};
-    auto const& value { node[YAML_RULE_DATA_KEY].Scalar() };
+    TextView value{HttpHeader::localize(node[YAML_RULE_DATA_KEY].Scalar()) };
     _fields.emplace(name, value);
     if (node_size == 2 && assume_equality_rule) {
       _rules.emplace(name, RuleCheck::make_equality(name, value));
     } else if (node_size == 3) {
       // Contans a verification rule.
-      std::shared_ptr<RuleCheck> tester = RuleCheck::find(node, name);
+      TextView rule_type{node[YAML_RULE_TYPE_KEY].Scalar()};
+      std::shared_ptr<RuleCheck> tester = RuleCheck::find(name, value, rule_type);
       if (!tester) {
         errata.error("Field rule at {} does not have a valid flag ({})",
-                     node.Mark(), node[YAML_RULE_TYPE_KEY].Scalar());
+                     node.Mark(), rule_type);
         continue;
       } else {
         _rules[name] = tester;
@@ -1493,7 +1495,7 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
       std::size_t auth_start = end_scheme + 3; // "://" is 3 characters.
       std::size_t end_host = auth_start;
       if (end_scheme != std::string::npos) {
-        _scheme = _url.substr(0, end_scheme);
+        _scheme = this->localize(_url.substr(0, end_scheme));
         // Look for the ':' for the port.
         end_host = _url.find(":", auth_start);
         if (end_host == std::string::npos) {
@@ -1503,11 +1505,11 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
             end_host = _url.length();
           }
         }
-        _authority = _url.substr(auth_start, end_host - auth_start);
+        _authority = this->localize(_url.substr(auth_start, end_host - auth_start));
       }
       std::size_t path_start = _url.find("/", end_host + 1);
       if (path_start != std::string::npos) {
-        _path = _url.substr(path_start);
+        _path = this->localize(_url.substr(path_start));
       }
     } else {
       errata.error(R"("{}" value at {} must be a string.)", YAML_HTTP_URL_KEY,
@@ -1720,9 +1722,8 @@ HttpHeader::parse_request(swoc::TextView data) {
     auto first_line{data.take_prefix_at('\n')};
     if (first_line) {
       first_line.remove_suffix_if(&isspace);
-      _method = this->localize(first_line.take_prefix_if(&isspace));
-      _url = this->localize(
-          first_line.ltrim_if(&isspace).take_prefix_if(&isspace));
+      _method = first_line.take_prefix_if(&isspace);
+      _url = first_line.ltrim_if(&isspace).take_prefix_if(&isspace);
       // Split out the path and scheme for http/2 required headers
       std::size_t offset = _url.find("://");
       if (offset != std::string::npos) {
@@ -1739,7 +1740,7 @@ HttpHeader::parse_request(swoc::TextView data) {
           continue;
         }
         auto value{field};
-        auto name{this->localize_lower(value.take_prefix_at(':'))};
+        auto name{value.take_prefix_at(':')};
         value.trim_if(&isspace);
         if (name) {
           _fields_rules->_fields.emplace(name, value);
