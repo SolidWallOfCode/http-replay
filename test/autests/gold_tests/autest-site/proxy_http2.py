@@ -98,12 +98,12 @@ class Http2ConnectionManager(object):
         """
         Remove the ':...' headers.
         """
-        headers_dict = {}
+        new_headers = http.client.HTTPMessage()
         for key, value in headers.items():
             if key[0] == ':':
                 continue
-            headers_dict.update({key: value})
-        return headers_dict
+            new_headers.add_header(key, value)
+        return new_headers
 
     def request_received(self, request_headers, req_body, stream_id):
         request_headers = collections.OrderedDict(request_headers)

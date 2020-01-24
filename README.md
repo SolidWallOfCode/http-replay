@@ -1,8 +1,9 @@
 # Proxy Verifier
 
 Proxy Verifier is an HTTP replay tool designed to verify the behavior of HTTP
-proxies. It builds a verifier-client binary and a verifier-server binary which each
-read a set of JSON files that specify the HTTP traffic for the two to exchange.
+proxies. It builds a verifier-client binary and a verifier-server binary which
+each read a set of YAML or JSON files that specify the HTTP traffic for the two
+to exchange.
 
 Proxy Verifier supports the HTTP replay of the following protocols:
 
@@ -12,7 +13,7 @@ Proxy Verifier supports the HTTP replay of the following protocols:
 
 ## Field Verification
 In addition to replaying HTTP traffic, Proxy Verifier implements proxy traffic
-verification via field verification rules specified in the JSON traffic files.
+verification via field verification rules specified in the YAML traffic files.
 Each header field specification can verify one of the following:
 
 1. The absence of a field with the specified name.

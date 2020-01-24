@@ -35,7 +35,7 @@ class Directive:
         """
         Generate a Directive from a directive description.
 
-        >>> d = Directive.directive_factory("delete", "X-CDN")
+        >>> d = Directive.directive_factory("delete", "X-Test-Header")
         >>> type(d) == DeleteDirective
         True
         >>> d = Directive.directive_factory("insert", "X-Request-ID: 3")
@@ -65,14 +65,14 @@ class DeleteDirective(Directive):
         """
         >>> import email.message
         >>> headers = email.message.Message()
-        >>> headers.add_header('X-cDn', 'YCPI-flurry')
-        >>> headers.add_header('Host', 'data.flurry.com')
-        >>> d = DeleteDirective('x-cdn')
+        >>> headers.add_header('X-tEsT', 'Candy-CANE')
+        >>> headers.add_header('Host', 'example.com')
+        >>> d = DeleteDirective('x-test')
         >>> new_headers = d.apply(headers)
         >>> len(new_headers)
         1
         >>> new_headers['host']
-        'data.flurry.com'
+        'example.com'
 
         Nothing happens if the requested field is not in the headers.
 
@@ -81,7 +81,7 @@ class DeleteDirective(Directive):
         >>> len(new_headers)
         1
         >>> new_headers['host']
-        'data.flurry.com'
+        'example.com'
         """
         del headers[self._field_name_to_delete]
         return headers
@@ -154,9 +154,9 @@ class DirectiveEngine:
     appending them in the value of the header. White space may be used as a
     separator. For instance:
 
-        X-Proxy-Directive: Delete=%<X-CDN%> Insert=%<X-Request-ID: 23%>
+        X-Proxy-Directive: Delete=%<X-Test%> Insert=%<X-Request-ID: 23%>
 
-    This header will both delete the X-CDN header, if it exists, and insert
+    This header will both delete the X-Test header, if it exists, and insert
     or modify an existing X-Request-ID header to have the value 23.
 
     In addition to the above manipulations, the X-Proxy-Directive is filtered
@@ -189,8 +189,8 @@ class DirectiveEngine:
         [('Delete', 'X-TestHeader')]
         >>> DirectiveEngine._directive_value_parser("Insert=%<X-TestHeader: from_proxy_response%>")
         [('Insert', 'X-TestHeader: from_proxy_response')]
-        >>> DirectiveEngine._directive_value_parser("Delete=%<X-CDN%>Insert=%<X-WOW:    3%>")
-        [('Delete', 'X-CDN'), ('Insert', 'X-WOW:    3')]
+        >>> DirectiveEngine._directive_value_parser("Delete=%<X-Test%>Insert=%<X-WOW:    3%>")
+        [('Delete', 'X-Test'), ('Insert', 'X-WOW:    3')]
         """
         return re.findall("(Delete|Insert)=%<(.*?)%>", x_proxy_directive_value)
 
@@ -204,17 +204,23 @@ class DirectiveEngine:
 
         >>> import email.message
         >>> headers = email.message.Message()
-        >>> headers.add_header('Host', 'data.flurry.com')
-        >>> headers.add_header('X-CDN', 'YCPI-flurry')
-        >>> headers.add_header('X-Proxy-Directive', 'Delete=%<x-cdn%> Insert=%<X-Request-ID: 4%>')
+        >>> headers.add_header('Host', 'example.com')
+        >>> headers.add_header('X-Test-Header', 'something')
+        >>> headers.add_header('X-Duplicate-Header', 'one')
+        >>> headers.add_header('X-Duplicate-Header', 'two')
+        >>> headers.add_header('X-Proxy-Directive', 'Delete=%<x-test-header%> Insert=%<X-Request-ID: 4%>')
         >>> e = DirectiveEngine(headers)
         >>> new_headers = e.get_new_headers()
         >>> len(new_headers)
-        2
+        4
         >>> new_headers['host']
-        'data.flurry.com'
+        'example.com'
         >>> new_headers['X-Request-ID']
         '4'
+        >>> new_headers['X-Duplicate-Header']
+        'one'
+        >>> new_headers.items()
+        [('Host', 'example.com'), ('X-Duplicate-Header', 'one'), ('X-Duplicate-Header', 'two'), ('X-Request-ID', '4')]
         """
         new_headers = self._original_headers
         for directive in self._directives:
