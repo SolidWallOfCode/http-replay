@@ -12,7 +12,7 @@ add_executable(verifier-server
     verifier-server.cc
 )
 
-target_link_libraries(verifier-server PUBLIC verifier-core ${CMAKE_INSTALL_LIBDIR}/libyaml-cpp.a Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(verifier-server PUBLIC verifier-core ${CMAKE_INSTALL_LIBDIR}/libyaml-cpp.a Threads::Threads OpenSSL::SSL OpenSSL::Crypto PkgConfig::libnghttp2)
 
 message("server bindir ${CMAKE_INSTALL_BINDIR}")
 install(TARGETS verifier-server RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -8,7 +8,7 @@ find_package(OpenSSL REQUIRED)
 
 add_library(verifier-core STATIC
     ArgParser.cc
-    HttpReplay.cc
+    ProxyVerifier.cc
 )
 
 target_include_directories(verifier-core PUBLIC)
