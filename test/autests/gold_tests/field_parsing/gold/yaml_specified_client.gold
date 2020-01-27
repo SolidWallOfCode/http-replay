@@ -1,9 +1,10 @@
 ``
-``Absence Success: Key: "x-another-response"
-``Absence Violation: Present. Key: "x-test-header", Value: "backAtYou"
+``Absence Success: Key: "1", Name: "x-test-different"
+``Presence Success: Key: "1", Name: "x-test-header", Value: "backAtYou"
 ``
-``Absence Violation: Present. Key: "x-another-response", Value: "response"
-``Absence Success: Key: "x-test-header"
+``Absence Violation: Present. Key: "2", Name: "x-another-response", Value: "response"
+``
+``Reading response body offset=0000000 0000001 .
 ``Headers:
 - "content-type": "text/html"
 - "content-length": "16"
@@ -12,19 +13,12 @@
 
 ``Status: "200"
 ``
-``Failed url=http://example.one/config/settings.yaml.
+``Reading response body offset=0000000 0000001 0000002 0000003 .
 ``
-``Headers:
 - "content-type": "text/html"
 - "content-length": "32"
 - "uuid": "2"
 - "x-another-response": "response"
-
-``Status: "200"
 ``
-``Failed url=http://example.one/config/settings.yaml.
-``
-``Starting session "yaml_specified.yaml":4 protocol=http.
 ``2 transactions in 1 sessions``
-``Parsed 2 transactions.
 ``

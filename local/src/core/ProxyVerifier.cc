@@ -401,7 +401,8 @@ swoc::Errata Session::run_transaction(const Txn &txn) {
           do_error();
           return errata;
         }
-        if (rsp_hdr.verify_headers(*txn._rsp._fields_rules)) {
+        auto key{txn._req.make_key()};
+        if (rsp_hdr.verify_headers(key, *txn._rsp._fields_rules)) {
           errata.error(
               R"(Response headers did not match expected response headers.)");
         }
@@ -448,6 +449,7 @@ swoc::Errata Session::run_transaction(const Txn &txn) {
 swoc::Errata Session::run_transactions(const std::list<Txn> &txn_list,
                                        const swoc::IPEndpoint *real_target) {
   swoc::Errata errata;
+  std::cout << "run_transactions with list of size: " << txn_list.size() << std::endl;
 
   for (auto const &txn : txn_list) {
     if (this->is_closed()) {
@@ -1265,40 +1267,43 @@ PresenceCheck::PresenceCheck(swoc::TextView name) { _name = name; }
 
 AbsenceCheck::AbsenceCheck(swoc::TextView name) { _name = name; }
 
-bool EqualityCheck::test(swoc::TextView name, swoc::TextView value) const {
+bool EqualityCheck::test(swoc::TextView key, swoc::TextView name, swoc::TextView value) const {
   swoc::Errata errata;
   if (name.empty())
-    errata.info(R"(Equals Violation: Absent. Key: "{}", Correct Value: "{}")",
-                _name, _value);
+    errata.info(R"(Equals Violation: Absent. Key: "{}", Name: "{}", Correct Value: "{}")",
+                key, _name, _value);
   else if (strcmp(value, _value))
     errata.info(
-        R"(Equals Violation: Different. Key: "{}", Correct Value: "{}", Actual Value: "{}")",
-        _name, _value, value);
+        R"(Equals Violation: Different. Key: "{}", Name: "{}", Correct Value: "{}", Actual Value: "{}")",
+        key, _name, _value, value);
   else {
-    errata.info(R"(Equals Success: Key: "{}", Value: "{}")", _name, _value);
+    errata.info(R"(Equals Success: Key: "{}", Name: "{}", Value: "{}")",
+        key, _name, _value);
     return true;
   }
   return false;
 }
 
-bool PresenceCheck::test(swoc::TextView name, swoc::TextView value) const {
+bool PresenceCheck::test(swoc::TextView key, swoc::TextView name, swoc::TextView value) const {
   swoc::Errata errata;
   if (name.empty()) {
-    errata.info(R"(Presence Violation: Absent. Key: "{}")", _name);
+    errata.info(R"(Presence Violation: Absent. Key: "{}", Name: "{}")",
+        key, _name);
     return false;
   }
-  errata.info(R"(Presence Success: Key: "{}", Value: "{}")", _name, value);
+  errata.info(R"(Presence Success: Key: "{}", Name: "{}", Value: "{}")",
+      key, _name, value);
   return true;
 }
 
-bool AbsenceCheck::test(swoc::TextView name, swoc::TextView value) const {
+bool AbsenceCheck::test(swoc::TextView key, swoc::TextView name, swoc::TextView value) const {
   swoc::Errata errata;
   if (!name.empty()) {
-    errata.info(R"(Absence Violation: Present. Key: "{}", Value: "{}")", _name,
-                value);
+    errata.info(R"(Absence Violation: Present. Key: "{}", Name: "{}", Value: "{}")",
+        key, _name, value);
     return false;
   }
-  errata.info(R"(Absence Success: Key: "{}")", _name);
+  errata.info(R"(Absence Success: Key: "{}", Name: "{}")", key, _name);
   return true;
 }
 
@@ -1606,7 +1611,7 @@ swoc::Errata HttpHeader::load(YAML::Node const &node) {
   return std::move(errata);
 }
 
-std::string HttpHeader::make_key() {
+std::string HttpHeader::make_key() const {
   swoc::FixedBufferWriter w{nullptr};
   std::string key; // Should generally leave --key argument empty on cmd line.
   Binding binding(*this);
@@ -1616,7 +1621,7 @@ std::string HttpHeader::make_key() {
   return std::move(key);
 }
 
-bool HttpHeader::verify_headers(const HttpFields &rules_) const {
+bool HttpHeader::verify_headers(swoc::TextView key, const HttpFields &rules_) const {
   // Remains false if no issue is observed
   // Setting true does not break loop because test() calls errata.diag()
   bool issue_exists = false;
@@ -1624,11 +1629,12 @@ bool HttpHeader::verify_headers(const HttpFields &rules_) const {
     // Hashing uses strcasecmp internally
     auto found_iter = _fields_rules->_fields.find(rule.first);
     if (found_iter == _fields_rules->_fields.cend()) {
-      if (!rule.second->test(swoc::TextView(), swoc::TextView())) {
+      if (!rule.second->test(key, swoc::TextView(), swoc::TextView())) {
         issue_exists = true;
       }
     } else {
-      if (!rule.second->test(found_iter->first,
+      if (!rule.second->test(key,
+                             found_iter->first,
                              swoc::TextView(found_iter->second))) {
         issue_exists = true;
       }

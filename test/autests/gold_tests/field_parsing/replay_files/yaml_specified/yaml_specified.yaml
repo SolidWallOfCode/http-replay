@@ -23,6 +23,7 @@ sessions:
         fields:
         - [ Host, example.one ]
         - [ X-Test-Header, something, present ]
+        - [ X-Not-There, yo, absent ]
         - [ uuid, 1 ]
     server-response:
       status: 200
@@ -45,7 +46,7 @@ sessions:
         - [ Content-Type, text/html ]
         - [ Content-Length, 16 ]
         - [ X-Test-Header, backAtYou, present ]
-        - [ X-Test-Header, something, absent ]
+        - [ X-Test-Different, something, absent ]
         - [ uuid, 1 ]
 
   - client-request:
@@ -66,7 +67,8 @@ sessions:
       headers:
         fields:
         - [ Host, example.one ]
-        - [ X-Another-Header, "request" ]
+        - [ X-Another-Header, "request", present ]
+        - [ X-Not-Present, "request2", present ]
         - [ uuid, 2 ]
     server-response:
       status: 200

@@ -141,7 +141,7 @@ swoc::Errata ServerReplayFileHandler::txn_open(YAML::Node const &node) {
 }
 
 swoc::Errata ServerReplayFileHandler::proxy_request(YAML::Node const &node) {
-  _txn._req._fields_rules = global_config.txn_rules;
+  _txn._req._fields_rules = std::make_shared<HttpFields>(*global_config.txn_rules);
   swoc::Errata errata = _txn._req.load(node);
   if (errata.is_ok()) {
     _key = _txn._req.make_key();
@@ -251,7 +251,7 @@ void TF_Serve(std::thread *t) {
       }
       thread_errata.diag("Validating request with url: {}", req_hdr._url);
       thread_errata.diag("{}", req_hdr);
-      if (req_hdr.verify_headers(*txn._req._fields_rules)) {
+      if (req_hdr.verify_headers(key, *txn._req._fields_rules)) {
         thread_errata.error(
             R"(Request headers did not match expected request headers.)");
       }

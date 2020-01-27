@@ -209,7 +209,7 @@ swoc::Errata ClientReplayFileHandler::proxy_response(YAML::Node const &node) {
   if (!Use_Proxy_Request_Directives) {
     // We only expect proxy responses when we are behaving according to the
     // client-request directives and there is a proxy.
-    _txn._rsp._fields_rules = global_config.txn_rules;
+    _txn._rsp._fields_rules = std::make_shared<HttpFields>(*global_config.txn_rules);
     return _txn._rsp.load(node);
   }
   return {};
@@ -219,7 +219,7 @@ swoc::Errata ClientReplayFileHandler::server_response(YAML::Node const &node) {
   if (Use_Proxy_Request_Directives) {
     // If we are behaving like the proxy, then replay-client is talking directly
     // with the server and should expect the server's responses.
-    _txn._rsp._fields_rules = global_config.txn_rules;
+    _txn._rsp._fields_rules = std::make_shared<HttpFields>(*global_config.txn_rules);
     return _txn._rsp.load(node);
   }
   return {};

@@ -250,13 +250,14 @@ public:
   /** Pure virtual function to test whether the input name and value fulfill the
    * rules for the test
    *
+   * @param key TextView The identifying transaction key.
    * @param name TextView holding the name of the target field (null if not
    * found)
    * @param value TextView holding the value of the target field (null if not
    * found)
    * @return Whether the check was successful or not
    */
-  virtual bool test(swoc::TextView name, swoc::TextView value) const = 0;
+  virtual bool test(swoc::TextView key, swoc::TextView name, swoc::TextView value) const = 0;
 };
 
 class EqualityCheck : public RuleCheck {
@@ -276,13 +277,14 @@ public:
   /** Test whether the name and value both match the expected name and value.
    * Reports errors in verbose mode.
    *
+   * @param key TextView The identifying transaction key.
    * @param name TextView holding the name of the target field (null if not
    * found)
    * @param value TextView holding the value of the target field (null if not
    * found)
    * @return Whether the check was successful or not
    */
-  bool test(swoc::TextView name, swoc::TextView value) const override;
+  bool test(swoc::TextView key, swoc::TextView name, swoc::TextView value) const override;
 };
 
 class PresenceCheck : public RuleCheck {
@@ -296,13 +298,14 @@ public:
   /** Test whether the name matches the expected name. Reports errors in verbose
    * mode.
    *
+   * @param key TextView The identifying transaction key.
    * @param name TextView holding the name of the target field (null if not
    * found)
    * @param value TextView (unused) holding the value of the target field (null
    * if not found)
    * @return Whether the check was successful or not
    */
-  bool test(swoc::TextView name, swoc::TextView value) const override;
+  bool test(swoc::TextView key, swoc::TextView name, swoc::TextView value) const override;
 };
 
 class AbsenceCheck : public RuleCheck {
@@ -316,13 +319,14 @@ public:
   /** Test whether the name is null (does not match the expected name). Reports
    * errors in verbose mode.
    *
+   * @param key TextView The identifying transaction key.
    * @param name TextView holding the name of the target field (null if not
    * found)
    * @param value TextView (unused) holding the value of the target field (null
    * if not found)
    * @return Whether the check was successful or not
    */
-  bool test(swoc::TextView name, swoc::TextView value) const override;
+  bool test(swoc::TextView key, swoc::TextView name, swoc::TextView value) const override;
 };
 
 class HttpFields {
@@ -409,7 +413,7 @@ public:
 
   swoc::Errata serialize(swoc::BufferWriter &w) const;
 
-  std::string make_key();
+  std::string make_key() const;
 
   /** Iterate over the rules and check that the fields are in line using the
    * stored RuleChecks, and report any errors.
@@ -417,7 +421,7 @@ public:
    * @param rules_ HeaderRules to iterate over, contains RuleCheck objects
    * @return Whether any rules were violated
    */
-  bool verify_headers(const HttpFields &rules_) const;
+  bool verify_headers(swoc::TextView key, const HttpFields &rules_) const;
 
   unsigned _status = 0;
   TextView _reason;
@@ -438,7 +442,7 @@ public:
   TextView _path;      // Required for method
 
   /// Maps field names to functors (rules) and field names to values (fields)
-  std::shared_ptr<HttpFields> _fields_rules;
+  std::shared_ptr<HttpFields> _fields_rules = nullptr;
 
   /// Body is chunked.
   unsigned _chunked_p : 1;
