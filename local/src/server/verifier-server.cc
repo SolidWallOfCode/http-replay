@@ -362,7 +362,7 @@ void Engine::command_run() {
     auto server_addr_arg{arguments.get("listen")};
     auto server_addr_https_arg{arguments.get("listen-https")};
     auto cert_arg{arguments.get("cert")};
-    auto key_arg{arguments.get("key")};
+    auto key_format_arg{arguments.get("format")};
 
     swoc::LocalBufferWriter<1024> w;
 
@@ -377,8 +377,8 @@ void Engine::command_run() {
       Use_Strict_Checking = true;
     }
 
-    if (key_arg) {
-      HttpHeader::_key_format = key_arg[0];
+    if (key_format_arg) {
+      HttpHeader::_key_format = key_format_arg[0];
     }
 
     if (server_addr_arg) {
@@ -527,7 +527,7 @@ int main(int argc, const char *argv[]) {
       .add_option("--listen-https", "",
                   "Listen TLS address and port. Can be a comma separated list.",
                   "", 1, "")
-      .add_option("--key", "-k", "Transaction key format", "", 1, "")
+      .add_option("--format", "-f", "Transaction key format", "", 1, "")
       .add_option("--cert", "", "Specify TLS certificate file", "", 1, "")
       .add_option(
           "--strict", "-s",

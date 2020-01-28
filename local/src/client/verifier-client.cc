@@ -16,6 +16,8 @@
 #include <list>
 #include <mutex>
 #include <sys/time.h>
+#include <unordered_set>
+#include <string>
 #include <thread>
 #include <unistd.h>
 
@@ -37,6 +39,7 @@ using swoc::TextView;
  * in the yaml file.
  */
 bool Use_Strict_Checking = false;
+std::unordered_set<std::string> Keys_Whitelist;
 
 std::mutex LoadMutex;
 
@@ -226,7 +229,10 @@ swoc::Errata ClientReplayFileHandler::server_response(YAML::Node const &node) {
 }
 
 swoc::Errata ClientReplayFileHandler::txn_close() {
-  _ssn->_transactions.emplace_back(std::move(_txn));
+  const auto& key{_txn._req.make_key()};
+  if (Keys_Whitelist.empty() || Keys_Whitelist.count(key) > 0) {
+    _ssn->_transactions.emplace_back(std::move(_txn));
+  }
   this->txn_reset();
   LoadMutex.unlock();
   return {};
@@ -235,7 +241,9 @@ swoc::Errata ClientReplayFileHandler::txn_close() {
 swoc::Errata ClientReplayFileHandler::ssn_close() {
   {
     std::lock_guard<std::mutex> lock(LoadMutex);
-    Session_List.push_back(_ssn);
+    if (!_ssn->_transactions.empty()) {
+      Session_List.push_back(_ssn);
+    }
   }
   this->ssn_reset();
   return {};
@@ -367,6 +375,13 @@ void Engine::command_run() {
     return;
   }
 
+  auto keys_arg{arguments.get("keys")};
+  if (!keys_arg.empty()) {
+    for (const auto& key: keys_arg) {
+      Keys_Whitelist.insert(key);
+    }
+  }
+
   errata.info(R"(Loading directory "{}".)", args[0]);
   errata.note(
       Load_Replay_Directory(swoc::file::path{args[0]},
@@ -414,7 +429,7 @@ void Engine::command_run() {
   auto rate_arg{arguments.get("rate")};
   auto repeat_arg{arguments.get("repeat")};
   auto sleep_limit_arg{arguments.get("sleep-limit")};
-  int repeat_count;
+  int repeat_count = 0;
   uint64_t sleep_limit = 500000;
   if (rate_arg.size() == 1 && !Session_List.empty()) {
     int target = atoi(rate_arg[0].c_str());
@@ -499,11 +514,7 @@ int main(int argc, const char *argv[]) {
                   "warnings, and errors,",
                   "", 1, "info")
       .add_option("--version", "-V", "Print version string")
-      .add_option("--help", "-h", "Print usage information")
-      .add_option("--strict", "-s",
-                  "Verify all proxy responses against the content in the yaml "
-                  "file as opposed to "
-                  "just those with verification elements.");
+      .add_option("--help", "-h", "Print usage information");
 
   engine.parser
       .add_command(Engine::COMMAND_RUN.data(), Engine::COMMAND_RUN_ARGS.data(),
@@ -515,7 +526,13 @@ int main(int argc, const char *argv[]) {
           "--sleep-limit", "",
           "Limit the amount of time spent sleeping between replays (ms)", "", 1,
           "")
-      .add_option("--rate", "", "Specify desired transacton rate", "", 1, "");
+      .add_option("--rate", "", "Specify desired transacton rate", "", 1, "")
+      .add_option("--strict", "-s",
+                  "Verify all proxy responses against the content in the yaml "
+                  "file as opposed to "
+                  "just those with verification elements.")
+      .add_option("--keys", "-k", "A whitelist of transactions to send.",
+                  "", MORE_THAN_ZERO_ARG_N, "");
 
   // parse the arguments
   engine.arguments = engine.parser.parse(argv);
