@@ -449,7 +449,6 @@ swoc::Errata Session::run_transaction(const Txn &txn) {
 swoc::Errata Session::run_transactions(const std::list<Txn> &txn_list,
                                        const swoc::IPEndpoint *real_target) {
   swoc::Errata errata;
-  std::cout << "run_transactions with list of size: " << txn_list.size() << std::endl;
 
   for (auto const &txn : txn_list) {
     if (this->is_closed()) {
@@ -1364,6 +1363,16 @@ swoc::Errata HttpHeader::serialize(swoc::BufferWriter &w) const {
   return std::move(errata);
 }
 
+void HttpFields::merge(HttpFields const &other)
+{
+  for (auto const &field: other._fields) {
+    _fields.emplace(field.first, field.second);
+  }
+  for (auto const &rule: other._rules) {
+    _rules.emplace(rule.first, rule.second);
+  }
+}
+
 swoc::Errata HttpFields::parse_global_rules(YAML::Node const &node) {
   swoc::Errata errata;
 
@@ -1920,6 +1929,14 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                           // HeaderRules txn_rules = ssn_rules;
                           result = handler.txn_open(txn_node);
                           if (result.is_ok()) {
+                            HttpFields all_fields;
+                            if (auto all_node{txn_node[YAML_ALL_MESSAGES_KEY]};
+                                all_node) {
+                              if (auto headers_node{all_node[YAML_HDR_KEY]};
+                                  headers_node) {
+                                result.note(all_fields.parse_global_rules(headers_node));
+                              }
+                            }
                             if (auto creq_node{txn_node[YAML_CLIENT_REQ_KEY]};
                                 creq_node) {
                               result.note(handler.client_request(creq_node));
@@ -1936,6 +1953,9 @@ swoc::Errata Load_Replay_File(swoc::file::path const &path,
                             if (auto prsp_node{txn_node[YAML_PROXY_RSP_KEY]};
                                 prsp_node) {
                               result.note(handler.proxy_response(prsp_node));
+                            }
+                            if (!all_fields._fields.empty()) {
+                              result.note(handler.apply_to_all_messages(all_fields));
                             }
                             result.note(handler.txn_close());
                           }

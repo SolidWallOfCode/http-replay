@@ -69,6 +69,7 @@ public:
   swoc::Errata proxy_request(YAML::Node const &node) override;
   swoc::Errata server_response(YAML::Node const &node) override;
   swoc::Errata proxy_response(YAML::Node const &node) override;
+  swoc::Errata apply_to_all_messages(HttpFields const &all_headers) override;
   swoc::Errata txn_close() override;
   swoc::Errata ssn_close() override;
 
@@ -196,7 +197,7 @@ swoc::Errata ClientReplayFileHandler::txn_open(YAML::Node const &node) {
 
 swoc::Errata ClientReplayFileHandler::client_request(YAML::Node const &node) {
   if (!Use_Proxy_Request_Directives) {
-    return _txn._req.load(node);
+    _txn._req.load(node);
   }
   return {};
 }
@@ -225,6 +226,13 @@ swoc::Errata ClientReplayFileHandler::server_response(YAML::Node const &node) {
     _txn._rsp._fields_rules = std::make_shared<HttpFields>(*global_config.txn_rules);
     return _txn._rsp.load(node);
   }
+  return {};
+}
+
+swoc::Errata ClientReplayFileHandler::apply_to_all_messages(HttpFields const &all_headers)
+{
+  _txn._req._fields_rules->merge(all_headers);
+  _txn._rsp._fields_rules->merge(all_headers);
   return {};
 }
 

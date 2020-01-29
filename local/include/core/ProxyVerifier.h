@@ -46,6 +46,7 @@ static const std::string YAML_CLIENT_REQ_KEY{"client-request"};
 static const std::string YAML_PROXY_REQ_KEY{"proxy-request"};
 static const std::string YAML_SERVER_RSP_KEY{"server-response"};
 static const std::string YAML_PROXY_RSP_KEY{"proxy-response"};
+static const std::string YAML_ALL_MESSAGES_KEY{"all"};
 static const std::string YAML_HDR_KEY{"headers"};
 static const std::string YAML_FIELDS_KEY{"fields"};
 static const std::string YAML_HTTP_VERSION_KEY{"version"};
@@ -330,6 +331,7 @@ public:
 };
 
 class HttpFields {
+  using self_type = HttpFields;
   /// std::unordered_map that returns RuleChecks for given field names
   using Rules = std::unordered_map<swoc::TextView, std::shared_ptr<RuleCheck>,
                                    Hash, Hash>;
@@ -339,11 +341,26 @@ public:
   Rules _rules;   ///< Maps field names to functors.
   Fields _fields; ///< Maps field names to values.
 
+  /** Add the field and rules from other into self.
+   *
+   * @note duplicate field names between this and other will result in
+   * duplicate fields being added.
+   *
+   * @param[in] other The HttpFields from which to add fields and rules.
+   */
+  void merge(self_type const &other);
+
   /** Parse a node holding as an attribute an individual field array of rules.
    * Used instead of parse_fields_and_rules on nodes like global_rules_node.
-   * Calls parse_rules.
+   * Calls parse_fields_and_rules.
    *
-   * @param[in] node YAML Node with Fields attribute holding array of rules
+   * @param[in] node YAML Node with Fields attribute holding array of rules.
+   *
+   *   For example:
+   *     node:
+   *       fields:
+   *         - [ X-Test-Header, 23 ]
+   *
    * @return swoc::Errata holding any encountered errors
    */
   swoc::Errata parse_global_rules(YAML::Node const &node);
@@ -351,6 +368,11 @@ public:
   /** Parse an individual array of fields and rules.
    *
    * @param[in] node Array of fields and rules in YAML node format
+   *
+   *   For example:
+   *       fields:
+   *         - [ X-Test-Header, 23 ]
+   *
    * @param[in] assume_equality_rule Whether to assume an equality rule in the
    *   absence of another verification rule.
    * @return swoc::Errata holding any encountered errors
@@ -878,6 +900,7 @@ public:
   virtual swoc::Errata proxy_request(YAML::Node const &node) { return {}; }
   virtual swoc::Errata server_response(YAML::Node const &node) { return {}; }
   virtual swoc::Errata proxy_response(YAML::Node const &node) { return {}; }
+  virtual swoc::Errata apply_to_all_messages(HttpFields const &all_headers) { return {}; }
 
 protected:
   /** The replay file associated with this handler.

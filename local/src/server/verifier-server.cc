@@ -104,6 +104,7 @@ public:
   swoc::Errata txn_open(YAML::Node const &node) override;
   swoc::Errata proxy_request(YAML::Node const &node) override;
   swoc::Errata server_response(YAML::Node const &node) override;
+  swoc::Errata apply_to_all_messages(HttpFields const &all_headers) override;
   swoc::Errata txn_close() override;
 
   void reset();
@@ -143,9 +144,6 @@ swoc::Errata ServerReplayFileHandler::txn_open(YAML::Node const &node) {
 swoc::Errata ServerReplayFileHandler::proxy_request(YAML::Node const &node) {
   _txn._req._fields_rules = std::make_shared<HttpFields>(*global_config.txn_rules);
   swoc::Errata errata = _txn._req.load(node);
-  if (errata.is_ok()) {
-    _key = _txn._req.make_key();
-  }
   return std::move(errata);
 }
 
@@ -174,7 +172,15 @@ swoc::Errata ServerReplayFileHandler::server_response(YAML::Node const &node) {
   return std::move(errata);
 }
 
+swoc::Errata ServerReplayFileHandler::apply_to_all_messages(HttpFields const &all_headers)
+{
+  _txn._req._fields_rules->merge(all_headers);
+  _txn._rsp._fields_rules->merge(all_headers);
+  return {};
+}
+
 swoc::Errata ServerReplayFileHandler::txn_close() {
+  _key = _txn._req.make_key();
   Transactions.emplace(_key, std::move(_txn));
   LoadMutex.unlock();
   this->reset();
