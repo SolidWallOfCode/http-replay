@@ -13,7 +13,7 @@ import os
 def check_file(dir_name, file_name):
     if not os.path.isfile(file_name):
         hint = ''
-        if os.path.isfile(os.path.join(dir_name, 'bin', 'verifier-server')):
+        if os.path.isfile(os.path.join(dir_name, 'bin', file_name)):
             hint = "\nDid you mean '--verifier-bin {}'?".\
                 format(os.path.join(dir_name, 'bin'))
         host.WriteError("verifier-server is not found. Aborting tests - "
@@ -40,10 +40,6 @@ if ENV['VERIFIER_BIN'] is not None:
             'VERIFIER_SERVER': verifier_server,
             }
     Variables.update(new_variables)
-
-if Arguments.ld_library_path is not None:
-    # Add environment variables
-    ENV['LD_LIBRARY_PATH'] = Arguments.ld_library_path
 
 # Modify delay times as we always have to kill server-replay, thus there's no
 # need to wait.

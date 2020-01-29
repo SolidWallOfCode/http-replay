@@ -21,9 +21,5 @@ if AuTestVersion() < autest_version:
 
 
 Settings.path_argument(["--verifier-bin"],
-                       required=True,
-                       help="A user provided directory to containing the client and server replay binaries")
-
-Settings.string_argument(["--ld-library-path"],
-                       required=True,
-                       help="The LD_LIBRARY_PATH to set when executing the replay binaries")
+                       default="../../bin",
+                       help="The directory containing the client and server Proxy Verifier binaries")

@@ -275,7 +275,9 @@ public:
    */
   EqualityCheck(swoc::TextView name, swoc::TextView value);
 
-  /** Test whether the name and value both match the expected name and value.
+  /** Test whether the name and value both match the expected name and value
+   * per the values instantiated in construction.
+   *
    * Reports errors in verbose mode.
    *
    * @param key TextView The identifying transaction key.

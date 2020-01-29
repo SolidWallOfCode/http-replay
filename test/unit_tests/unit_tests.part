@@ -3,7 +3,9 @@ Import("*")
 PartName("tests")
 
 DependsOn([
-    Component("swoc++",requires=REQ.DEFAULT(internal=False))
+    Component("swoc++",requires=REQ.DEFAULT(internal=False)),
+    Component("nghttp2",requires=REQ.DEFAULT(internal=False)),
+    "proxy-verifier.core"
     ])
 
 env.AppendUnique(
@@ -12,8 +14,7 @@ env.AppendUnique(
 
 files = [
     "unit_test_main.cc",
-
-    "test_HttpReplay.cc",
+    "test_ProxyVerifier.cc",
 ]
 env.UnitTest(
     "tests",

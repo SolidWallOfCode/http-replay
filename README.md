@@ -74,11 +74,38 @@ This will build `verifier-client` `verifier-server` in the `bin/` directory at t
 
 ### Running the Tests
 
-Verify Proxy ships with a suite of [AuTests](https://bitbucket.org/autestsuite/reusable-gold-testing-system/src/master/). To run them:
+#### Unit Tests
+
+To build and run the unit tests, use the `run_utest` Scons target:
+
+```
+scons -j8 --with-ssl=/path/to/openssl --with-nghttp2=/path/to/nghttp2 --use-env --cfg=release run_utest::
+```
+
+#### Gold Tests
+Proxy Verifier ships with a set of automated end to end tests written using the
+[AuTest](https://bitbucket.org/autestsuite/reusable-gold-testing-system/src/master/)
+framework. To run them, simply run the `autest.sh` script:
 
 ```
 cd test/autests
-./autest.sh --verifier-bin /path/to/verifier/bin --ld-library-path "/path/to/opensl/lib;/path/to/nghttp2/lib" 
+./autest.sh
+```
+
+This sets up the pipenv shell each time which takes a few seconds. When
+developing, after the first `autest.sh` run, things can be expedited by
+entering the shell and running the tests from in that shell:
+
+```
+cd test autests
+pipenv shell
+autest -D gold_tests
+```
+
+The `-f` option can be used to run a particular test:
+```
+# Within the pipenv shell, as described above:
+autest -D gold_tests -f https
 ```
 
 ## Usage
