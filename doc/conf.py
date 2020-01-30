@@ -42,7 +42,7 @@ extensions = [
 
 exec(open('ext/local-config.py').read())
 
-doxylink = { "httpreplay" : ( 'doxygen/httpreplay.tag' , 'reference/' ) }
+doxylink = { "proxyverifier" : ( 'doxygen/proxyverifier.tag' , 'reference/' ) }
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

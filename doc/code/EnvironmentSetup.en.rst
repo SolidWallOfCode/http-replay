@@ -11,7 +11,7 @@
 Environment Setup
 *****************
 
-The environment used during testing consisted of one replay client, one replay server, one ATS
+The environment used during testing consisted of one verifier client, one verifier server, one ATS
 instance, and one μDNS instance.
 
 The first item is to select a set of ports that will be used in the testing. These are
@@ -26,10 +26,10 @@ The first item is to select a set of ports that will be used in the testing. The
    The port on which Traffic Server will service HTTPS (TLS) and HTTP/2 requests.
 
 ``<server-port>``
-   The port on which the replay server will service HTTP (plain text) requests.
+   The port on which the verifier server will service HTTP (plain text) requests.
 
 ``<server-tls-port>``
-   The port on which the replay server will server HTTPS (TLS) and HTTP/2 requests.
+   The port on which the verifier server will server HTTPS (TLS) and HTTP/2 requests.
 
 All of these are shared by at least two processes and therefore need to be set consistently.
 
@@ -40,14 +40,14 @@ was configured with ::
    dest_ip=* ssl_cert_name=<pem> ssl_key_name=<key>
 
 Where ``<pem>`` and ``<key>`` refer to a public certificate and private key files that will be
-shared between ATS and the replay server. The `remap configuration file
+shared between ATS and the verifier server. The `remap configuration file
 <https://docs.trafficserver.apache.org/en/8.0.x/admin-guide/files/remap.config.en.html>`__ was changed
 to contain the remap rules ::
 
    regex_map http://(.*) http://$1:<server-port>
    regex_map https://(.*) https://$1:<server-tls-port>
 
-This will remap requests to the proxy port to the replay server ports.
+This will remap requests to the proxy port to the verifier server ports.
 
 The following ATS configuration variables need to be set
 
@@ -81,7 +81,7 @@ The following ATS configuration variables need to be set
 
 The HTTP Replay server was invoked with ::
 
-   replay-server run <test file> --listen 127.0.0.1:<proxy-port> --cert <combined> --listen-https 127.0.0.1:<proxy-tls-port> --verbose
+   verifier-server run <test file> --listen 127.0.0.1:<proxy-port> --cert <combined> --listen-https 127.0.0.1:<proxy-tls-port> --verbose
 
 Where ``<test file>`` is the JSON or YAML replay file and ``<combined>`` references a concatenated
 version of the same certificate and key pair set up in records.config and ssl_multicert.config
@@ -92,13 +92,13 @@ header validation.
 
 The HTTP Replay client was invoked with ::
 
-   replay-client run <test file> 127.0.0.1:<proxy-port> 127.0.0.1:<proxy-tls-port> --verbose
+   verifier-client run <test file> 127.0.0.1:<proxy-port> 127.0.0.1:<proxy-tls-port> --verbose
 
 Where ``<test file>`` is the same JSON or YAML replay file used by the server and ``<combined>``
 references a concatenated version of the same certificate and key pair set up in records.config and
 ssl_multicert.config earlier.
 
-The ``key`` flag to the replay server does not refer to cryptographic keys, but instead to the
+The ``key`` flag to the verifier server does not refer to cryptographic keys, but instead to the
 identifying flag in headers that the server uses to choose how to verify and respond to incoming
 requests. It is recommended to omit it from the command line invocation (it defaults to uuid).
 

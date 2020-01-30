@@ -12,7 +12,7 @@ This code carries the ASF copyright. It is not, however, officially affiliated w
 
 This project is intended for testing of Apache Traffic Server. This is done by using a mock client
 and server, and providing information to both of them by way of replay files. Once ATS is configured
-in a way such that it will forward responses to the "replay server", the client can send requests,
+in a way such that it will forward responses to the "verifier server", the client can send requests,
 which are configured with a list of fields to be sent in an HTTP header, a body of an arbitrary size,
 and other options such as the scheme, version (of HTTP), and so on. These requests are known as
 "client requests". What ATS forwards to the server, known as the "proxy requests", is identified
