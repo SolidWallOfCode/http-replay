@@ -39,7 +39,7 @@ if path_nghttp2 is not None:
   custom_rpath.append(path_nghttp2 + "/lib")
 SetOptionDefault("RPATH",  custom_rpath)
 
-Part("swoc++/swoc++.part",vcs_type=VcsGit(server="github.com", repository="SolidWallOfCode/libswoc", tag="dev-1-0-8"), package_group="proxy-verifier")
+Part("swoc++/swoc++.part",vcs_type=VcsGit(server="github.com", repository="SolidWallOfCode/libswoc", tag="1.0.10"), package_group="proxy-verifier")
 
 
 Part("local/parts/proxy-verifier.part", package_group="proxy-verifier")

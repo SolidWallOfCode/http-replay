@@ -2064,7 +2064,7 @@ Load_Replay_Directory(swoc::file::path const &path,
 swoc::Errata parse_ips(std::string arg, std::deque<swoc::IPEndpoint> &target) {
   swoc::Errata errata;
   int offset = 0;
-  int new_offset;
+  int new_offset = 0;
   while (offset != std::string::npos) {
     new_offset = arg.find(',', offset);
     std::string name = arg.substr(offset, new_offset - offset);
@@ -2111,7 +2111,7 @@ swoc::Rv<swoc::IPEndpoint> Resolve_FQDN(swoc::TextView fqdn) {
       auto n = swoc::svto_radix<10>(text);
       if (text.empty() && 0 < n && n <= MAX_PORT) {
         port = htons(n);
-        if (addr.parse(host_str)) {
+        if (addr.load(host_str)) {
           zret.result().assign(addr, port);
         } else {
           addrinfo *addrs;

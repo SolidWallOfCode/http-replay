@@ -8,28 +8,12 @@ Implement the Proxy Verifier test server extension.
 #
 
 from __future__ import print_function
+from socket_util import create_address_argument
 import os
 
 
-def create_address_argument(ports):
-    """
-    >>> create_address_argument([8080, 8081])
-    '"127.0.0.1:8080,127.0.0.1:8081"'
-    """
-    is_first = True
-    argument = '"'
-    for port in ports:
-        if is_first:
-            is_first = False
-        else:
-            argument += ','
-        # We'll have a trailing ',', but verifier-server handles that fine.
-        argument += "127.0.0.1:{}".format(port)
-    argument += '"'
-    return argument
-
-
-def _configure_server(obj, process, name, replay_dir, http_ports=[8080], https_ports=[4443],
+def _configure_server(obj, process, name, replay_dir, use_ipv6=False,
+                      http_ports=[8080], https_ports=[4443],
                       ssl_cert='', other_args=''):
     """
     Configure the provided process to run a verifier-server command.
@@ -58,12 +42,12 @@ def _configure_server(obj, process, name, replay_dir, http_ports=[8080], https_p
 
     if http_ports:
         command += "--listen "
-        command += create_address_argument(http_ports)
+        command += create_address_argument(http_ports, use_ipv6)
         command += " "
 
     if https_ports:
         command += '--listen-https '
-        command += create_address_argument(https_ports)
+        command += create_address_argument(https_ports, use_ipv6)
         command += " "
 
         if ssl_cert == '':
@@ -98,8 +82,9 @@ def _configure_server(obj, process, name, replay_dir, http_ports=[8080], https_p
     process.ReturnCode = -2
 
 
-def MakeServerProcess(test, name, replay_dir, http_ports=[8080],
-                      https_ports=[4443], ssl_cert='', other_args=''):
+def MakeServerProcess(test, name, replay_dir, use_ipv6=False,
+                      http_ports=[8080], https_ports=[4443],
+                      ssl_cert='', other_args=''):
     """
     Create a verifier-server process.
 
@@ -131,12 +116,13 @@ def MakeServerProcess(test, name, replay_dir, http_ports=[8080],
             be derived.
     """
     server = test.Processes.Process(name)
-    _configure_server(test, server, name, replay_dir, http_ports, https_ports,
-                      ssl_cert, other_args)
+    _configure_server(test, server, name, replay_dir, use_ipv6,
+                      http_ports, https_ports, ssl_cert, other_args)
     return server
 
 
-def AddServerProcess(run, name, replay_dir, http_ports=[8080], https_ports=[4443],
+def AddServerProcess(run, name, replay_dir, use_ipv6=False,
+                     http_ports=[8080], https_ports=[4443],
                      ssl_cert='', other_args=''):
     """
     Create a verifier-server process and configure it for the given TestRun.
@@ -151,8 +137,8 @@ def AddServerProcess(run, name, replay_dir, http_ports=[8080], https_ports=[4443
     """
 
     server = run.Processes.Process(name)
-    _configure_server(run, server, name, replay_dir, http_ports, https_ports,
-                      ssl_cert, other_args)
+    _configure_server(run, server, name, replay_dir, use_ipv6,
+                      http_ports, https_ports, ssl_cert, other_args)
 
     client = run.Processes.Default
     client.StartBefore(server)
